@@ -7,7 +7,7 @@ import { fetchMediums } from "../../features/mediumsSlice";
 import { Artshow } from "../../features/artshowsSlice";
 import { User } from "../../features/usersSlice";
 import { Artwork } from "../../features/artworkSlice";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { NumericFormat } from "react-number-format";
 
 interface ImageGalleryProps {
@@ -65,6 +65,71 @@ const ImageGallery = ({
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
         {currentIndex + 1} / {images.length}
       </div>
+    </div>
+  );
+};
+
+const CollapsibleDescription = ({ text }: { text: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const previewLength = 30;
+  const shouldCollapse = text.length > previewLength;
+
+  if (!shouldCollapse) {
+    return <p className="text-gray-700 text-sm">{text}</p>;
+  }
+
+  return (
+    <div className="relative">
+      <AnimatePresence>
+        <motion.p
+          className="text-gray-700 text-sm"
+          initial={false}
+          animate={{ height: isExpanded ? "auto" : "1.5em" }}
+          transition={{ duration: 0.3 }}
+        >
+          {isExpanded ? text : `${text.slice(0, previewLength)}...`}
+        </motion.p>
+      </AnimatePresence>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="text-blue-600 hover:text-blue-800 text-sm font-medium mt-1 flex items-center"
+      >
+        {isExpanded ? (
+          <>
+            Show less
+            <svg
+              className="w-4 h-4 ml-1 transform rotate-180"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </>
+        ) : (
+          <>
+            Read more
+            <svg
+              className="w-4 h-4 ml-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </>
+        )}
+      </button>
     </div>
   );
 };
@@ -138,33 +203,45 @@ const PublicArtshow = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <div className="relative h-[60vh] bg-gray-900">
-        {activeArtshow.photoUrl && (
-          <img
-            src={activeArtshow.photoUrl}
-            alt={activeArtshow.name}
-            className="w-full h-full object-cover opacity-50"
-          />
-        )}
-        {/* Overlay for desktop */}
-        <div className="hidden sm:block absolute inset-0 bg-gradient-to-b from-transparent to-gray-900">
-          <div className="container mx-auto px-4 h-full flex items-end pb-16">
-            <div className="text-white">
-              <h1 className="text-4xl md:text-6xl font-bold mb-4">
-                {activeArtshow.name}
-              </h1>
-              <p className="text-xl md:text-2xl mb-4">
-                {new Date(activeArtshow.startDate).toLocaleDateString()} -{" "}
-                {new Date(activeArtshow.endDate).toLocaleDateString()}
-              </p>
-              <p className="text-lg md:text-xl max-w-2xl">
-                {activeArtshow.description}
-              </p>
-            </div>
+      {/* Hero Section*/}
+      <section className="bg-white">
+        <div className="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12">
+          {/* Mobile Image - only visible on mobile, full-bleed */}
+          <div className="block lg:hidden w-screen max-w-none relative left-1/2 right-1/2 -mx-[50vw] -mt-8 mb-8 h-[300px] overflow-hidden bg-white">
+            {activeArtshow.photoUrl && (
+              <img
+                src={activeArtshow.photoUrl}
+                alt={activeArtshow.name}
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ objectPosition: "center top" }}
+              />
+            )}
+          </div>
+          {/* Text content */}
+          <div className="mr-auto place-self-center lg:col-span-7">
+            <h1 className="max-w-2xl mb-4 text-4xl font-extrabold tracking-tight leading-none md:text-5xl xl:text-6xl text-black">
+              {activeArtshow.name}
+            </h1>
+            <p className="max-w-2xl mb-6 font-light text-black lg:mb-8 md:text-lg lg:text-xl">
+              {new Date(activeArtshow.startDate).toLocaleDateString()} -{" "}
+              {new Date(activeArtshow.endDate).toLocaleDateString()}
+            </p>
+            <p className="max-w-2xl mb-6 font-light text-black lg:mb-8 md:text-lg lg:text-xl">
+              {activeArtshow.description}
+            </p>
+          </div>
+          {/* Desktop Image - only visible on desktop */}
+          <div className="hidden lg:mt-0 lg:col-span-5 lg:flex lg:order-last mb-8 lg:mb-0">
+            {activeArtshow.photoUrl && (
+              <img
+                src={activeArtshow.photoUrl}
+                alt={activeArtshow.name}
+                className="w-full h-full object-cover rounded-lg"
+              />
+            )}
           </div>
         </div>
-      </div>
+      </section>
       {/* Description below image for mobile */}
       <div className="block sm:hidden bg-gray-900 px-4 py-6">
         <h1 className="text-3xl font-bold text-white mb-2">
@@ -263,9 +340,7 @@ const PublicArtshow = () => {
                             "Price not available"
                           )}
                         </p>
-                        <p className="text-gray-700 text-sm">
-                          {artwork.description}
-                        </p>
+                        <CollapsibleDescription text={artwork.description} />
                       </div>
                     ))}
                 </div>

@@ -24,3 +24,10 @@ yarn-error.log*
 
 .env
 .env.local
+
+#firebase
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
