@@ -6,13 +6,15 @@ export interface Artwork {
   date: string;
   description: string;
   images: string[];
-  artistId?: string;
+  artistId: string;
   artshowId?: string;
+  locationId?: string;
   price?: number;
   height?: number;
   width?: number;
   status?: "pending" | "approved" | "rejected";
+  showStatus?: "accepted" | "rejected" | null;
   availability?: "available" | "sold" | "not for sale";
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }

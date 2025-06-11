@@ -42,6 +42,7 @@ const Users = () => {
   } = useAppSelector((state) => state.users);
   const { data: locations } = useAppSelector((state) => state.locations);
   const { data: artshows } = useAppSelector((state) => state.artshows);
+  const { data: artworks } = useAppSelector((state) => state.artwork);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAcceptShowModalOpen, setIsAcceptShowModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -53,6 +54,7 @@ const Users = () => {
   const [acceptShowData, setAcceptShowData] = useState({
     artshowId: "",
     locationId: "",
+    selectedArtworks: [] as string[],
   });
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterState>({
@@ -133,7 +135,10 @@ const Users = () => {
 
   const handleAcceptIntoShow = async (user: User) => {
     setSelectedUser(user);
-    setAcceptShowData({ artshowId: "", locationId: "" });
+    setAcceptShowData({ artshowId: "", locationId: "", selectedArtworks: [] });
+    if (user.id) {
+      await dispatch(fetchArtistArtworks(user.id));
+    }
     setIsAcceptShowModalOpen(true);
   };
 
@@ -142,12 +147,12 @@ const Users = () => {
     if (
       !selectedUser ||
       !acceptShowData.artshowId ||
-      !acceptShowData.locationId
+      !acceptShowData.locationId ||
+      acceptShowData.selectedArtworks.length === 0
     )
       return;
 
     try {
-      // Update user status to 'artist' and add artshowId
       const userRef = doc(db, "users", selectedUser.id!);
       await updateDoc(userRef, {
         status: "showing",
@@ -156,24 +161,24 @@ const Users = () => {
         updatedAt: new Date().toISOString(),
       });
 
-      // Fetch all artworks for this user
       const artworksQuery = query(
         collection(db, "artworks"),
         where("artistId", "==", selectedUser.id)
       );
       const artworksSnapshot = await getDocs(artworksQuery);
-      const artworkIds = artworksSnapshot.docs.map((doc) => doc.id);
 
-      // Update each artwork with artshowId and locationId
-      const updatePromises = artworksSnapshot.docs.map((doc) =>
-        updateDoc(doc.ref, {
-          artshowId: acceptShowData.artshowId,
-          locationId: acceptShowData.locationId,
+      const updatePromises = artworksSnapshot.docs.map((doc) => {
+        const isSelected = acceptShowData.selectedArtworks.includes(doc.id);
+        return updateDoc(doc.ref, {
+          artshowId: isSelected ? acceptShowData.artshowId : "",
+          locationId: isSelected ? acceptShowData.locationId : "",
+          showStatus: isSelected ? "accepted" : "rejected",
           updatedAt: new Date().toISOString(),
-        })
-      );
+        });
+      });
 
-      // Update location with artwork IDs and add artist ID
+      const selectedArtworkIds = acceptShowData.selectedArtworks;
+
       const locationRef = doc(db, "locations", acceptShowData.locationId);
       const locationDoc = await getDoc(locationRef);
       const locationData = locationDoc.data();
@@ -181,25 +186,24 @@ const Users = () => {
       const currentLocationArtworkIds = locationData?.artworkIds || [];
 
       await updateDoc(locationRef, {
-        artworkIds: [...currentLocationArtworkIds, ...artworkIds],
+        artworkIds: [...currentLocationArtworkIds, ...selectedArtworkIds],
         artistIds: [...currentLocationArtistIds, selectedUser.id],
         updatedAt: new Date().toISOString(),
       });
 
-      // Update artshow with artwork IDs and add artist ID
       const artshowRef = doc(db, "artshows", acceptShowData.artshowId);
       const artshowDoc = await getDoc(artshowRef);
       const currentArtistIds = artshowDoc.data()?.artistIds || [];
 
       await updateDoc(artshowRef, {
-        artworkIds: artworkIds,
+        artworkIds: selectedArtworkIds,
         artistIds: [...currentArtistIds, selectedUser.id],
         updatedAt: new Date().toISOString(),
       });
 
       await Promise.all(updatePromises);
       setIsAcceptShowModalOpen(false);
-      dispatch(fetchUsers()); // Refresh users list
+      dispatch(fetchUsers());
       toast.success("User accepted into show successfully");
     } catch (error) {
       console.error("Error accepting user into show:", error);
@@ -214,12 +218,10 @@ const Users = () => {
       window.confirm("Are you sure you want to remove this user from the show?")
     ) {
       try {
-        // Get the artshow to update
         const artshowRef = doc(db, "artshows", user.artshowId);
         const artshowDoc = await getDoc(artshowRef);
         const artshowData = artshowDoc.data();
 
-        // Fetch all artworks for this user
         const artworksQuery = query(
           collection(db, "artworks"),
           where("artistId", "==", user.id)
@@ -227,10 +229,8 @@ const Users = () => {
         const artworksSnapshot = await getDocs(artworksQuery);
         const artworkIds = artworksSnapshot.docs.map((doc) => doc.id);
 
-        // Get the location ID from the first artwork (they should all be in the same location)
         const locationId = artworksSnapshot.docs[0]?.data()?.locationId;
 
-        // Update each artwork to remove artshowId and locationId
         const updateArtworkPromises = artworksSnapshot.docs.map((doc) =>
           updateDoc(doc.ref, {
             artshowId: "",
@@ -239,7 +239,6 @@ const Users = () => {
           })
         );
 
-        // Update artshow to remove artist and artwork IDs
         const updatedArtistIds = (artshowData?.artistIds || []).filter(
           (id: string) => id !== user.id
         );
@@ -253,7 +252,6 @@ const Users = () => {
           updatedAt: new Date().toISOString(),
         });
 
-        // Update location to remove artwork IDs and artist ID
         if (locationId) {
           const locationRef = doc(db, "locations", locationId);
           const locationDoc = await getDoc(locationRef);
@@ -271,7 +269,6 @@ const Users = () => {
           });
         }
 
-        // Update user to remove artshowId and change role back to on-boarding
         const userRef = doc(db, "users", user.id);
         await updateDoc(userRef, {
           artshowId: "",
@@ -281,7 +278,7 @@ const Users = () => {
         });
 
         await Promise.all(updateArtworkPromises);
-        dispatch(fetchUsers()); // Refresh users list
+        dispatch(fetchUsers());
         toast.success("User removed from show successfully");
       } catch (error) {
         console.error("Error removing user from show:", error);
@@ -293,7 +290,6 @@ const Users = () => {
   const filteredUsers = useMemo(() => {
     return users
       .filter((user) => {
-        // Search by name or email
         if (
           filters.search &&
           !user.name.toLowerCase().includes(filters.search.toLowerCase()) &&
@@ -302,12 +298,10 @@ const Users = () => {
           return false;
         }
 
-        // Filter by role
         if (filters.roles.length > 0 && !filters.roles.includes(user.role)) {
           return false;
         }
 
-        // Filter by status
         if (
           filters.statuses.length > 0 &&
           !filters.statuses.includes(user.status)
@@ -315,7 +309,6 @@ const Users = () => {
           return false;
         }
 
-        // Filter by interest in show
         if (
           filters.interestInShow.length > 0 &&
           !filters.interestInShow.includes(user.interestInShow || "none")
@@ -341,16 +334,9 @@ const Users = () => {
       <ContentWrapper loading={loading}>
         <div className="flex justify-between items-center mb-6">
           <h1 className={h1ReverseDark}>Users</h1>
-          {/* <button
-            onClick={() => handleOpenModal()}
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-          >
-            Add User
-          </button> */}
         </div>
 
         <div className="mb-8 space-y-6">
-          {/* Search Bar */}
           <div className="max-w-4xl mx-auto">
             <div className="flex">
               <div className="relative w-full">
@@ -389,10 +375,8 @@ const Users = () => {
             </div>
           </div>
 
-          {/* Filters Grid */}
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Role Filter */}
               <div className="relative">
                 <button
                   type="button"
@@ -451,7 +435,6 @@ const Users = () => {
                 </div>
               </div>
 
-              {/* Status Filter */}
               <div className="relative">
                 <button
                   type="button"
@@ -508,7 +491,6 @@ const Users = () => {
                 </div>
               </div>
 
-              {/* Interest in Show Filter */}
               <div className="relative">
                 <button
                   type="button"
@@ -569,7 +551,6 @@ const Users = () => {
             </div>
           </div>
 
-          {/* Active Filters and Clear Button */}
           {(filters.search ||
             filters.roles.length > 0 ||
             filters.statuses.length > 0 ||
@@ -771,12 +752,6 @@ const Users = () => {
                     >
                       Edit
                     </button>
-                    {/* <button
-                      onClick={() => handleDelete(user.id!)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button> */}
                   </td>
                 </tr>
               ))}
@@ -941,7 +916,7 @@ const Users = () => {
 
         {isAcceptShowModalOpen && selectedUser && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="relative top-20 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white">
               <div className="mt-3">
                 <h3 className={h4}>Accept {selectedUser.name} into Show</h3>
                 <form onSubmit={handleAcceptShowSubmit} className="space-y-4">
@@ -987,6 +962,69 @@ const Users = () => {
                       ))}
                     </select>
                   </div>
+
+                  <div>
+                    <label className={label}>Select Artworks</label>
+                    <div className="mt-2 max-h-60 overflow-y-auto border rounded-md p-4">
+                      {artworks.length > 0 ? (
+                        <div className="space-y-3">
+                          {artworks.map((artwork) => (
+                            <div
+                              key={artwork.id}
+                              className="flex items-center space-x-3"
+                            >
+                              <input
+                                type="checkbox"
+                                id={`artwork-${artwork.id}`}
+                                checked={acceptShowData.selectedArtworks.includes(
+                                  artwork.id!
+                                )}
+                                onChange={(e) => {
+                                  setAcceptShowData((prev) => ({
+                                    ...prev,
+                                    selectedArtworks: e.target.checked
+                                      ? [...prev.selectedArtworks, artwork.id!]
+                                      : prev.selectedArtworks.filter(
+                                          (id) => id !== artwork.id
+                                        ),
+                                  }));
+                                }}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              />
+                              <label
+                                htmlFor={`artwork-${artwork.id}`}
+                                className="flex-1 cursor-pointer"
+                              >
+                                <div className="flex items-center space-x-3">
+                                  {artwork.images[0] && (
+                                    <img
+                                      src={artwork.images[0]}
+                                      alt={artwork.title}
+                                      className="h-12 w-12 object-cover rounded"
+                                    />
+                                  )}
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {artwork.title}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {artwork.medium} • {artwork.height}x
+                                      {artwork.width} {artwork.uom}
+                                    </p>
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">
+                          No artworks found
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="flex justify-end space-x-3">
                     <button
                       type="button"
@@ -995,7 +1033,11 @@ const Users = () => {
                     >
                       Cancel
                     </button>
-                    <button type="submit" className={button}>
+                    <button
+                      type="submit"
+                      className={button}
+                      disabled={acceptShowData.selectedArtworks.length === 0}
+                    >
                       Accept
                     </button>
                   </div>

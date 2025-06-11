@@ -12,6 +12,7 @@ import {
   getDoc,
   deleteDoc,
   serverTimestamp,
+  orderBy,
 } from "firebase/firestore";
 import {
   getStorage,
@@ -29,7 +30,6 @@ export interface Artwork {
   date: string;
   images: string[];
   description: string;
-  status: "pending" | "approved" | "rejected";
   artistId: string;
   artshowId?: string;
   price?: number;
@@ -38,6 +38,8 @@ export interface Artwork {
   availability?: "available" | "sold" | "not for sale";
   createdAt: string;
   updatedAt: string;
+  locationId?: string;
+  showStatus?: "accepted" | "rejected" | null;
 }
 
 export interface ArtworkState {
@@ -87,7 +89,6 @@ export const uploadArtwork = createAsyncThunk(
       const artworkData = {
         ...artwork,
         images: imageUrls,
-        status: "pending" as const,
         createdAt: now.toString(),
         updatedAt: now.toString(),
       };
@@ -331,6 +332,130 @@ export const fetchArtshowArtworks = createAsyncThunk(
   }
 );
 
+export const updateArtworkShowStatus = createAsyncThunk(
+  "artwork/updateShowStatus",
+  async ({
+    artworkId,
+    artshowId,
+    locationId,
+    showStatus,
+  }: {
+    artworkId: string;
+    artshowId?: string;
+    locationId?: string;
+    showStatus: "accepted" | "rejected" | null;
+  }) => {
+    try {
+      const artworkRef = doc(db, "artworks", artworkId);
+      const artworkDoc = await getDoc(artworkRef);
+
+      if (!artworkDoc.exists()) {
+        throw new Error("Artwork not found");
+      }
+
+      const artwork = artworkDoc.data();
+      const currentArtshowId = artwork.artshowId;
+      const currentLocationId = artwork.locationId;
+
+      // Update artwork with empty strings for rejected status
+      await updateDoc(artworkRef, {
+        artshowId: showStatus === "rejected" ? "" : artshowId || "",
+        locationId: showStatus === "rejected" ? "" : locationId || "",
+        showStatus,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // If artwork was previously in a show, update that show
+      if (currentArtshowId) {
+        const artshowRef = doc(db, "artshows", currentArtshowId);
+        const artshowDoc = await getDoc(artshowRef);
+        if (artshowDoc.exists()) {
+          const artshowData = artshowDoc.data();
+          const updatedArtworkIds = (artshowData.artworkIds || []).filter(
+            (id: string) => id !== artworkId
+          );
+          await updateDoc(artshowRef, {
+            artworkIds: updatedArtworkIds,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      // If artwork was previously in a location, update that location
+      if (currentLocationId) {
+        const locationRef = doc(db, "locations", currentLocationId);
+        const locationDoc = await getDoc(locationRef);
+        if (locationDoc.exists()) {
+          const locationData = locationDoc.data();
+          const updatedArtworkIds = (locationData.artworkIds || []).filter(
+            (id: string) => id !== artworkId
+          );
+          await updateDoc(locationRef, {
+            artworkIds: updatedArtworkIds,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      // If artwork is being added to a new show and is accepted, update that show
+      if (artshowId && showStatus === "accepted") {
+        const artshowRef = doc(db, "artshows", artshowId);
+        const artshowDoc = await getDoc(artshowRef);
+        if (artshowDoc.exists()) {
+          const artshowData = artshowDoc.data();
+          const currentArtworkIds = artshowData.artworkIds || [];
+          if (!currentArtworkIds.includes(artworkId)) {
+            await updateDoc(artshowRef, {
+              artworkIds: [...currentArtworkIds, artworkId],
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+
+      // If artwork is being added to a new location and is accepted, update that location
+      if (locationId && showStatus === "accepted") {
+        const locationRef = doc(db, "locations", locationId);
+        const locationDoc = await getDoc(locationRef);
+        if (locationDoc.exists()) {
+          const locationData = locationDoc.data();
+          const currentArtworkIds = locationData.artworkIds || [];
+          if (!currentArtworkIds.includes(artworkId)) {
+            await updateDoc(locationRef, {
+              artworkIds: [...currentArtworkIds, artworkId],
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+
+      return { artworkId, artshowId, locationId, showStatus };
+    } catch (error: any) {
+      console.error("Error updating artwork show status:", error);
+      throw error;
+    }
+  }
+);
+
+export const fetchAllArtworks = createAsyncThunk(
+  "artwork/fetchAll",
+  async () => {
+    try {
+      const artworksRef = collection(db, "artworks");
+      const q = query(artworksRef, orderBy("createdAt", "desc"));
+      const querySnapshot = await getDocs(q);
+      const artworks = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Artwork[];
+      return artworks;
+    } catch (error) {
+      console.error("Error fetching all artworks:", error);
+      throw error;
+    }
+  }
+);
+
 const artworkSlice = createSlice({
   name: "artwork",
   initialState,
@@ -436,6 +561,41 @@ const artworkSlice = createSlice({
         state.data = action.payload;
       })
       .addCase(fetchArtshowArtworks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch artworks";
+      })
+      .addCase(updateArtworkShowStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateArtworkShowStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.data.findIndex(
+          (artwork) => artwork.id === action.payload.artworkId
+        );
+        if (index !== -1) {
+          state.data[index] = {
+            ...state.data[index],
+            artshowId: action.payload.artshowId || "",
+            locationId: action.payload.locationId || "",
+            showStatus: action.payload.showStatus,
+          };
+        }
+      })
+      .addCase(updateArtworkShowStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error =
+          action.error.message || "Failed to update artwork show status";
+      })
+      .addCase(fetchAllArtworks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllArtworks.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload;
+      })
+      .addCase(fetchAllArtworks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to fetch artworks";
       });

@@ -6,6 +6,7 @@ import Onboarding from "./pages/Onboarding/Onboarding";
 import Locations from "./pages/Locations/Locations";
 import Artshows from "./pages/Artshows/Artshows";
 import Mediums from "./pages/Mediums/Mediums";
+import Artworks from "./pages/Artworks/Artworks";
 import { auth } from "./firebase";
 import { useAppDispatch, useAppSelector } from "./hooks/storeHook";
 import { login, setInitializing } from "./features/authSlice";
@@ -122,6 +123,7 @@ const App = () => {
             <Route path="mediums" element={<Mediums />} />
             <Route path="users" element={<Users />} />
             <Route path="users/:userId/artworks" element={<UserArtworks />} />
+            <Route path="artworks" element={<Artworks />} />
           </Route>
 
           {/* Redirect root to appropriate route based on role */}

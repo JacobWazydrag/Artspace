@@ -2,7 +2,15 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import { fetchUserById } from "../../features/usersSlice";
-import { fetchArtistArtworks } from "../../features/artworkSlice";
+import {
+  fetchArtistArtworks,
+  updateArtworkShowStatus,
+} from "../../features/artworkSlice";
+import { fetchArtshows } from "../../features/artshowsSlice";
+import { fetchLocations } from "../../features/locationsSlice";
+import { toast } from "react-hot-toast";
+import ContentWrapper from "../../components/ContentWrapper";
+import { Artwork } from "../../types/artwork";
 
 interface ImageGalleryProps {
   images: string[];
@@ -122,16 +130,100 @@ const UserArtworks = () => {
     images: string[];
     index: number;
   } | null>(null);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [selectedArtworkId, setSelectedArtworkId] = useState<string | null>(
+    null
+  );
+  const [assignmentData, setAssignmentData] = useState({
+    artshowId: "",
+    locationId: "",
+  });
 
   const { data: user } = useAppSelector((state) => state.users);
   const { data: artworks, loading } = useAppSelector((state) => state.artwork);
+  const { data: artshows } = useAppSelector((state) => state.artshows);
+  const { data: locations } = useAppSelector((state) => state.locations);
 
   useEffect(() => {
     if (userId) {
       dispatch(fetchUserById(userId));
       dispatch(fetchArtistArtworks(userId));
+      dispatch(fetchArtshows());
+      dispatch(fetchLocations());
     }
   }, [dispatch, userId]);
+
+  const handleShowAssignment = (artworkId: string) => {
+    setSelectedArtworkId(artworkId);
+    const artwork = artworks.find((a) => a.id === artworkId);
+    if (artwork) {
+      setAssignmentData({
+        artshowId: artwork.artshowId || "",
+        locationId: artwork.locationId || "",
+      });
+    }
+    setShowAssignmentModal(true);
+  };
+
+  const handleAssignmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedArtworkId) return;
+
+    try {
+      const artwork = artworks.find((a) => a.id === selectedArtworkId);
+      if (!artwork) return;
+
+      const showStatus = assignmentData.artshowId ? "accepted" : "rejected";
+
+      await dispatch(
+        updateArtworkShowStatus({
+          artworkId: selectedArtworkId,
+          artshowId: assignmentData.artshowId,
+          locationId: assignmentData.locationId,
+          showStatus,
+        })
+      ).unwrap();
+
+      // Refresh the artworks list
+      if (userId) {
+        await dispatch(fetchArtistArtworks(userId));
+      }
+
+      toast.success(
+        showStatus === "accepted"
+          ? "Artwork assigned to show successfully"
+          : "Artwork rejected from show"
+      );
+      setShowAssignmentModal(false);
+    } catch (error) {
+      console.error("Error updating artwork show status:", error);
+      toast.error("Failed to update artwork show status");
+    }
+  };
+
+  const getStatusBadge = (artwork: Artwork) => {
+    if (!artwork.showStatus) return null;
+
+    const statusColors: Record<NonNullable<Artwork["showStatus"]>, string> = {
+      accepted: "bg-green-100 text-green-800",
+      rejected: "bg-red-100 text-red-800",
+    };
+
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          statusColors[artwork.showStatus]
+        }`}
+      >
+        {artwork.showStatus}
+      </span>
+    );
+  };
+
+  const getShowName = (artshowId: string) => {
+    const show = artshows.find((s) => s.id === artshowId);
+    return show?.name || "Unknown Show";
+  };
 
   if (loading) {
     return (
@@ -198,11 +290,31 @@ const UserArtworks = () => {
                 </div>
               )}
               <div className="p-4">
-                <h3 className="text-lg font-semibold mb-2">{artwork.title}</h3>
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-lg font-semibold">{artwork.title}</h3>
+                  {getStatusBadge(artwork)}
+                </div>
                 <p className="text-gray-600 mb-1">{artwork.medium}</p>
-                <p className="text-gray-600 mb-1">{artwork.uom}</p>
-                <p className="text-gray-600">{artwork.date}</p>
-                <p className="mt-2 text-gray-700">{artwork.description}</p>
+                <p className="text-gray-600 mb-1">
+                  {artwork.height} X {artwork.width} {artwork.uom}
+                </p>
+                <p className="text-gray-600 mb-2">{artwork.date}</p>
+                <p className="text-gray-700 mb-4">{artwork.description}</p>
+
+                {artwork.artshowId && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    Show: {getShowName(artwork.artshowId)}
+                  </p>
+                )}
+
+                <button
+                  onClick={() => handleShowAssignment(artwork.id!)}
+                  className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                >
+                  {artwork.artshowId
+                    ? "Change Show Assignment"
+                    : "Assign to Show"}
+                </button>
               </div>
             </div>
           ))}
@@ -220,6 +332,117 @@ const UserArtworks = () => {
           onClose={() => setSelectedArtwork(null)}
           initialIndex={selectedArtwork.index}
         />
+      )}
+
+      {showAssignmentModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Manage Artwork Show Status
+              </h3>
+              <form onSubmit={handleAssignmentSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Art Show
+                  </label>
+                  <select
+                    value={assignmentData.artshowId}
+                    onChange={(e) =>
+                      setAssignmentData({
+                        ...assignmentData,
+                        artshowId: e.target.value,
+                        locationId: "", // Reset location when show changes
+                      })
+                    }
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  >
+                    <option value="">Select a Show</option>
+                    {artshows.map((show) => (
+                      <option key={show.id} value={show.id}>
+                        {show.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {assignmentData.artshowId && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Location
+                    </label>
+                    <select
+                      value={assignmentData.locationId}
+                      onChange={(e) =>
+                        setAssignmentData({
+                          ...assignmentData,
+                          locationId: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      required
+                    >
+                      <option value="">Select a Location</option>
+                      {locations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAssignmentModal(false)}
+                    className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await dispatch(
+                          updateArtworkShowStatus({
+                            artworkId: selectedArtworkId!,
+                            artshowId: "",
+                            locationId: "",
+                            showStatus: "rejected",
+                          })
+                        ).unwrap();
+
+                        // Refresh the artworks list
+                        if (userId) {
+                          await dispatch(fetchArtistArtworks(userId));
+                        }
+
+                        toast.success("Artwork rejected from show");
+                        setShowAssignmentModal(false);
+                      } catch (error) {
+                        console.error("Error rejecting artwork:", error);
+                        toast.error("Failed to reject artwork");
+                      }
+                    }}
+                    className="bg-red-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={
+                      !assignmentData.artshowId || !assignmentData.locationId
+                    }
+                    className="bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Accept
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

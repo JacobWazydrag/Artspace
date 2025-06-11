@@ -45,7 +45,6 @@ interface ArtworkInput {
   date: string;
   description: string;
   artistId: string;
-  status: "pending" | "approved" | "rejected";
 }
 
 interface ImageGalleryProps {
@@ -467,7 +466,6 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
         date: newArtwork.date || new Date().toISOString().split("T")[0],
         description: newArtwork.description || "",
         artistId: profile.id,
-        status: "pending" as const,
         price: newArtwork.price || 0,
         height: newArtwork.height || 0,
         width: newArtwork.width || 0,

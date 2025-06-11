@@ -14,6 +14,7 @@ import {
   Squares2X2Icon,
   UsersIcon,
   ArrowRightOnRectangleIcon,
+  PaintBrushIcon,
 } from "@heroicons/react/24/outline";
 
 const Sidebar = () => {
@@ -104,6 +105,19 @@ const Sidebar = () => {
               <span className="flex items-center gap-3">
                 <UsersIcon className="w-5 h-5" />
                 Users
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/artworks"
+              className={`block px-4 py-2 rounded ${
+                isActive("/artworks") ? "bg-gray-900" : "hover:bg-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <PaintBrushIcon className="w-5 h-5" />
+                Artworks
               </span>
             </Link>
           </li>
