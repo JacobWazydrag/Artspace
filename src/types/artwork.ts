@@ -17,4 +17,5 @@ export interface Artwork {
   availability?: "available" | "sold" | "not for sale";
   createdAt: string;
   updatedAt: string;
+  beenInShows?: string[];
 }

@@ -13,6 +13,11 @@ export interface Location {
   managerIds: string[];
   hours: string;
   notes: string;
+  artshowId?: string;
+  artworkIds?: string[];
+  artistIds?: string[];
+  artistsThatHaveShown?: string[];
+  artworksThatHaveHungHere?: string[];
 }
 
 interface LocationsState {

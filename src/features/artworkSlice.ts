@@ -40,6 +40,7 @@ export interface Artwork {
   updatedAt: string;
   locationId?: string;
   showStatus?: "accepted" | "rejected" | null;
+  beenInShows?: string[];
 }
 
 export interface ArtworkState {
