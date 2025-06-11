@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import {
   fetchUsers,
@@ -24,6 +24,13 @@ import {
 import { db } from "../../firebase";
 import { toast } from "react-hot-toast";
 
+interface FilterState {
+  search: string;
+  roles: string[];
+  statuses: string[];
+  interestInShow: string[];
+}
+
 const Users = () => {
   const { label, input, select, button, h4, cancelButton, h1ReverseDark } =
     formClasses;
@@ -48,6 +55,12 @@ const Users = () => {
     locationId: "",
   });
   const navigate = useNavigate();
+  const [filters, setFilters] = useState<FilterState>({
+    search: "",
+    roles: [],
+    statuses: [],
+    interestInShow: [],
+  });
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -137,7 +150,7 @@ const Users = () => {
       // Update user status to 'artist' and add artshowId
       const userRef = doc(db, "users", selectedUser.id!);
       await updateDoc(userRef, {
-        status: "accepted",
+        status: "showing",
         role: "artist",
         artshowId: acceptShowData.artshowId,
         updatedAt: new Date().toISOString(),
@@ -277,6 +290,44 @@ const Users = () => {
     }
   };
 
+  const filteredUsers = useMemo(() => {
+    return users
+      .filter((user) => {
+        // Search by name or email
+        if (
+          filters.search &&
+          !user.name.toLowerCase().includes(filters.search.toLowerCase()) &&
+          !user.email.toLowerCase().includes(filters.search.toLowerCase())
+        ) {
+          return false;
+        }
+
+        // Filter by role
+        if (filters.roles.length > 0 && !filters.roles.includes(user.role)) {
+          return false;
+        }
+
+        // Filter by status
+        if (
+          filters.statuses.length > 0 &&
+          !filters.statuses.includes(user.status)
+        ) {
+          return false;
+        }
+
+        // Filter by interest in show
+        if (
+          filters.interestInShow.length > 0 &&
+          !filters.interestInShow.includes(user.interestInShow || "none")
+        ) {
+          return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [users, filters]);
+
   if (error) {
     return (
       <div className="text-center text-red-600">
@@ -296,6 +347,323 @@ const Users = () => {
           >
             Add User
           </button> */}
+        </div>
+
+        <div className="mb-8 space-y-6">
+          {/* Search Bar */}
+          <div className="max-w-4xl mx-auto">
+            <div className="flex">
+              <div className="relative w-full">
+                <input
+                  type="search"
+                  id="search"
+                  value={filters.search}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, search: e.target.value }))
+                  }
+                  className="block p-2.5 w-full z-20 text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Search users by name or email..."
+                />
+                <button
+                  type="button"
+                  className="absolute top-0 end-0 p-2.5 text-sm font-medium h-full text-white bg-blue-700 rounded-e-lg border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                    />
+                  </svg>
+                  <span className="sr-only">Search</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Filters Grid */}
+          <div className="max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Role Filter */}
+              <div className="relative">
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                  onClick={() =>
+                    document
+                      .getElementById("role-dropdown")
+                      ?.classList.toggle("hidden")
+                  }
+                >
+                  Role
+                  <svg
+                    className="w-2.5 h-2.5 ms-2.5"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 10 6"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="m1 1 4 4 4-4"
+                    />
+                  </svg>
+                </button>
+                <div
+                  id="role-dropdown"
+                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
+                >
+                  <ul className="py-2 text-sm text-gray-700">
+                    {["manager", "on-boarding", "artist"].map((role) => (
+                      <li key={role}>
+                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.roles.includes(role)}
+                            onChange={(e) => {
+                              setFilters((prev) => ({
+                                ...prev,
+                                roles: e.target.checked
+                                  ? [...prev.roles, role]
+                                  : prev.roles.filter((r) => r !== role),
+                              }));
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="ml-2 capitalize">
+                            {role.replace("-", " ")}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Status Filter */}
+              <div className="relative">
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                  onClick={() =>
+                    document
+                      .getElementById("status-dropdown")
+                      ?.classList.toggle("hidden")
+                  }
+                >
+                  Status
+                  <svg
+                    className="w-2.5 h-2.5 ms-2.5"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 10 6"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="m1 1 4 4 4-4"
+                    />
+                  </svg>
+                </button>
+                <div
+                  id="status-dropdown"
+                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
+                >
+                  <ul className="py-2 text-sm text-gray-700">
+                    {["active", "inactive", "banned"].map((status) => (
+                      <li key={status}>
+                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.statuses.includes(status)}
+                            onChange={(e) => {
+                              setFilters((prev) => ({
+                                ...prev,
+                                statuses: e.target.checked
+                                  ? [...prev.statuses, status]
+                                  : prev.statuses.filter((s) => s !== status),
+                              }));
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="ml-2 capitalize">{status}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Interest in Show Filter */}
+              <div className="relative">
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                  onClick={() =>
+                    document
+                      .getElementById("interest-dropdown")
+                      ?.classList.toggle("hidden")
+                  }
+                >
+                  Interest in Show
+                  <svg
+                    className="w-2.5 h-2.5 ms-2.5"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 10 6"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="m1 1 4 4 4-4"
+                    />
+                  </svg>
+                </button>
+                <div
+                  id="interest-dropdown"
+                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
+                >
+                  <ul className="py-2 text-sm text-gray-700">
+                    {["yes", "no", "maybe"].map((interest) => (
+                      <li key={interest}>
+                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.interestInShow.includes(interest)}
+                            onChange={(e) => {
+                              setFilters((prev) => ({
+                                ...prev,
+                                interestInShow: e.target.checked
+                                  ? [...prev.interestInShow, interest]
+                                  : prev.interestInShow.filter(
+                                      (i) => i !== interest
+                                    ),
+                              }));
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="ml-2 capitalize">{interest}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Filters and Clear Button */}
+          {(filters.search ||
+            filters.roles.length > 0 ||
+            filters.statuses.length > 0 ||
+            filters.interestInShow.length > 0) && (
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <div className="flex flex-wrap gap-2">
+                {filters.search && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    Search: {filters.search}
+                    <button
+                      onClick={() =>
+                        setFilters((prev) => ({ ...prev, search: "" }))
+                      }
+                      className="ml-2 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.roles.map((role) => (
+                  <span
+                    key={role}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                  >
+                    Role: {role.replace("-", " ")}
+                    <button
+                      onClick={() =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          roles: prev.roles.filter((r) => r !== role),
+                        }))
+                      }
+                      className="ml-2 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {filters.statuses.map((status) => (
+                  <span
+                    key={status}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                  >
+                    Status: {status}
+                    <button
+                      onClick={() =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          statuses: prev.statuses.filter((s) => s !== status),
+                        }))
+                      }
+                      className="ml-2 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {filters.interestInShow.map((interest) => (
+                  <span
+                    key={interest}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                  >
+                    Interest: {interest}
+                    <button
+                      onClick={() =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          interestInShow: prev.interestInShow.filter(
+                            (i) => i !== interest
+                          ),
+                        }))
+                      }
+                      className="ml-2 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <button
+                onClick={() =>
+                  setFilters({
+                    search: "",
+                    roles: [],
+                    statuses: [],
+                    interestInShow: [],
+                  })
+                }
+                className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+              >
+                Clear all filters
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -326,7 +694,7 @@ const Users = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -403,12 +771,12 @@ const Users = () => {
                     >
                       Edit
                     </button>
-                    <button
+                    {/* <button
                       onClick={() => handleDelete(user.id!)}
                       className="text-red-600 hover:text-red-900"
                     >
                       Delete
-                    </button>
+                    </button> */}
                   </td>
                 </tr>
               ))}
@@ -488,7 +856,7 @@ const Users = () => {
                     >
                       <option value="manager">Manager</option>
                       <option value="on-boarding">On-boarding</option>
-                      <option value="approved-artist">Approved Artist</option>
+                      <option value="artist">Artist</option>
                     </select>
                   </div>
                   <div>

@@ -25,6 +25,8 @@ import { fetchArtshows } from "./features/artshowsSlice";
 import ArtistLayout from "./components/Layouts/ArtistLayout";
 import MyArtwork from "./pages/Artist/MyArtwork";
 import PublicArtshow from "./pages/PublicArtshow/PublicArtshow";
+import ArtshowArtworks from "./pages/Artshows/ArtshowArtworks";
+import ArtshowArtists from "./pages/Artshows/ArtshowArtists";
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -115,6 +117,8 @@ const App = () => {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="locations" element={<Locations />} />
             <Route path="artshows" element={<Artshows />} />
+            <Route path="artshows/:id/artworks" element={<ArtshowArtworks />} />
+            <Route path="artshows/:id/artists" element={<ArtshowArtists />} />
             <Route path="mediums" element={<Mediums />} />
             <Route path="users" element={<Users />} />
             <Route path="users/:userId/artworks" element={<UserArtworks />} />

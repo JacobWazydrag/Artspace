@@ -370,7 +370,7 @@ const Locations = () => {
                         >
                           Edit
                         </button>
-                        <button
+                        {/* <button
                           onClick={() =>
                             location.id && handleDelete(location.id)
                           }
@@ -378,7 +378,7 @@ const Locations = () => {
                           disabled={isSubmitting}
                         >
                           Delete
-                        </button>
+                        </button> */}
                       </td>
                     </tr>
                   ))}

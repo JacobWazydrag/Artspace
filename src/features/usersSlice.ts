@@ -18,7 +18,7 @@ export interface User {
   name: string;
   email: string;
   bio: string;
-  role: "manager" | "on-boarding" | "approved-artist";
+  role: "manager" | "on-boarding" | "artist";
   status: "active" | "inactive" | "banned";
   contactInfo?: {
     phone?: string;
