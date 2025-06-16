@@ -9,7 +9,7 @@ export interface UserProfile {
     | "on-boarding"
     | "on-boarding-awaiting-approval"
     | "artist";
-  status: "active" | "inactive" | "AWAITING_APPROVAL";
+  status: "accepted" | "rejected" | "shown" | "showing" | null;
   contactInfo?: {
     phone?: string;
     address?: string;

@@ -7,6 +7,7 @@ import mediumsReducer from "../features/mediumsSlice";
 import usersReducer from "../features/usersSlice";
 import artworkReducer from "../features/artworkSlice";
 import chatReducer from "../features/chatSlice";
+import publicReducer from "../features/publicSlice";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     users: usersReducer,
     artwork: artworkReducer,
     chat: chatReducer,
+    public: publicReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

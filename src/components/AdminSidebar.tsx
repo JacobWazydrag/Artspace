@@ -4,7 +4,7 @@ import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
 import { logout } from "../features/authSlice";
 import { clearProfile } from "../features/profileSlice";
-import logo from "../assets/logo.svg";
+import logo from "../assets/artspaceLogo.jpg";
 import lightLogo from "../assets/light.png";
 import darkLogo from "../assets/dark.png";
 import {
@@ -36,10 +36,10 @@ const Sidebar = () => {
       <div className="mb-8 flex items-center gap-3">
         <img
           src={logo}
-          alt="Art Space Chicago Logo"
-          className="h-10 w-10 object-contain"
+          alt="ArtSpace Chicago Logo"
+          className="h-16 w-16 rounded-full object-cover border-2 border-white shadow"
         />
-        <h1 className="text-2xl font-bold">Art Space</h1>
+        <h1 className="text-2xl font-bold">ArtSpace</h1>
       </div>
       <nav>
         <ul className="space-y-2">

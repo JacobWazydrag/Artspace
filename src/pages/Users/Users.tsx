@@ -6,6 +6,7 @@ import {
   updateUser,
   deleteUser,
   User,
+  listenToUsers,
 } from "../../features/usersSlice";
 import { useNavigate } from "react-router-dom";
 import ContentWrapper from "../../components/ContentWrapper";
@@ -31,6 +32,28 @@ interface FilterState {
   interestInShow: string[];
 }
 
+interface ColumnVisibility {
+  name: boolean;
+  email: boolean;
+  role: boolean;
+  status: boolean;
+  interestInShow: boolean;
+  artworks: boolean;
+  actions: boolean;
+  isExpanded: boolean;
+}
+
+const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
+  name: true,
+  email: true,
+  role: true,
+  status: true,
+  interestInShow: false,
+  artworks: true,
+  actions: true,
+  isExpanded: false,
+};
+
 const Users = () => {
   const { label, input, select, button, h4, cancelButton, h1ReverseDark } =
     formClasses;
@@ -48,7 +71,7 @@ const Users = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<Partial<User>>({
     role: "on-boarding",
-    status: "active",
+    status: "accepted",
     assignedLocations: [],
   });
   const [acceptShowData, setAcceptShowData] = useState({
@@ -63,11 +86,40 @@ const Users = () => {
     statuses: [],
     interestInShow: [],
   });
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    () => {
+      const saved = localStorage.getItem("usersColumnVisibility");
+      return saved ? JSON.parse(saved) : DEFAULT_COLUMN_VISIBILITY;
+    }
+  );
+  const { user: currentUser } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(fetchUsers());
+    const unsubscribe = dispatch(listenToUsers());
     dispatch(fetchArtshows());
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
   }, [dispatch]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "usersColumnVisibility",
+      JSON.stringify(columnVisibility)
+    );
+  }, [columnVisibility]);
+
+  const toggleColumn = (column: keyof ColumnVisibility) => {
+    setColumnVisibility((prev) => ({
+      ...prev,
+      [column]: !prev[column],
+    }));
+  };
+
+  const resetColumnVisibility = () => {
+    setColumnVisibility(DEFAULT_COLUMN_VISIBILITY);
+  };
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -81,7 +133,7 @@ const Users = () => {
       setSelectedUser(null);
       setFormData({
         role: "on-boarding",
-        status: "active",
+        status: null,
         assignedLocations: [],
       });
     }
@@ -93,7 +145,7 @@ const Users = () => {
     setSelectedUser(null);
     setFormData({
       role: "on-boarding",
-      status: "active",
+      status: null,
       assignedLocations: [],
     });
   };
@@ -290,6 +342,7 @@ const Users = () => {
   const filteredUsers = useMemo(() => {
     return users
       .filter((user) => {
+        if (currentUser && user.id === currentUser.id) return false;
         if (
           filters.search &&
           !user.name.toLowerCase().includes(filters.search.toLowerCase()) &&
@@ -297,29 +350,25 @@ const Users = () => {
         ) {
           return false;
         }
-
         if (filters.roles.length > 0 && !filters.roles.includes(user.role)) {
           return false;
         }
-
         if (
           filters.statuses.length > 0 &&
-          !filters.statuses.includes(user.status)
+          !filters.statuses.includes(user.status || "")
         ) {
           return false;
         }
-
         if (
           filters.interestInShow.length > 0 &&
-          !filters.interestInShow.includes(user.interestInShow || "none")
+          !filters.interestInShow.includes(user.interestInShow || "")
         ) {
           return false;
         }
-
         return true;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [users, filters]);
+  }, [users, filters, currentUser]);
 
   if (error) {
     return (
@@ -334,6 +383,70 @@ const Users = () => {
       <ContentWrapper loading={loading}>
         <div className="flex justify-between items-center mb-6">
           <h1 className={h1ReverseDark}>Users</h1>
+        </div>
+
+        <div className="mb-4">
+          <button
+            onClick={() =>
+              setColumnVisibility((prev) => ({
+                ...prev,
+                isExpanded: !prev.isExpanded,
+              }))
+            }
+            className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+          >
+            <svg
+              className={`w-4 h-4 mr-2 transform transition-transform ${
+                columnVisibility.isExpanded ? "rotate-90" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+            Column Visibility
+          </button>
+
+          {columnVisibility.isExpanded && (
+            <div className="mt-2 p-4 bg-white rounded-lg shadow">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Visible Columns
+                </h3>
+                <button
+                  onClick={resetColumnVisibility}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Reset to Default
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(columnVisibility)
+                  .filter(([key]) => key !== "isExpanded")
+                  .map(([key, isVisible]) => (
+                    <button
+                      key={key}
+                      onClick={() =>
+                        toggleColumn(key as keyof ColumnVisibility)
+                      }
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        isVisible
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {key.charAt(0).toUpperCase() + key.slice(1)}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mb-8 space-y-6">
@@ -467,26 +580,28 @@ const Users = () => {
                   className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
                 >
                   <ul className="py-2 text-sm text-gray-700">
-                    {["active", "inactive", "banned"].map((status) => (
-                      <li key={status}>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.statuses.includes(status)}
-                            onChange={(e) => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                statuses: e.target.checked
-                                  ? [...prev.statuses, status]
-                                  : prev.statuses.filter((s) => s !== status),
-                              }));
-                            }}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2 capitalize">{status}</span>
-                        </label>
-                      </li>
-                    ))}
+                    {["showing", "shown", "accepted", "rejected"].map(
+                      (status) => (
+                        <li key={status}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.statuses.includes(status)}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  statuses: e.target.checked
+                                    ? [...prev.statuses, status]
+                                    : prev.statuses.filter((s) => s !== status),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2 capitalize">{status}</span>
+                          </label>
+                        </li>
+                      )
+                    )}
                   </ul>
                 </div>
               </div>
@@ -501,7 +616,7 @@ const Users = () => {
                       ?.classList.toggle("hidden")
                   }
                 >
-                  Interest in Show
+                  Art Show
                   <svg
                     className="w-2.5 h-2.5 ms-2.5"
                     aria-hidden="true"
@@ -520,28 +635,28 @@ const Users = () => {
                 </button>
                 <div
                   id="interest-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
+                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto"
                 >
                   <ul className="py-2 text-sm text-gray-700">
-                    {["yes", "no", "maybe"].map((interest) => (
-                      <li key={interest}>
+                    {artshows.map((show) => (
+                      <li key={show.id}>
                         <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={filters.interestInShow.includes(interest)}
+                            checked={filters.interestInShow.includes(show.name)}
                             onChange={(e) => {
                               setFilters((prev) => ({
                                 ...prev,
                                 interestInShow: e.target.checked
-                                  ? [...prev.interestInShow, interest]
+                                  ? [...prev.interestInShow, show.name]
                                   : prev.interestInShow.filter(
-                                      (i) => i !== interest
+                                      (name) => name !== show.name
                                     ),
                               }));
                             }}
                             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                           />
-                          <span className="ml-2 capitalize">{interest}</span>
+                          <span className="ml-2">{show.name}</span>
                         </label>
                       </li>
                     ))}
@@ -608,18 +723,18 @@ const Users = () => {
                     </button>
                   </span>
                 ))}
-                {filters.interestInShow.map((interest) => (
+                {filters.interestInShow.map((showName) => (
                   <span
-                    key={interest}
+                    key={showName}
                     className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
                   >
-                    Interest: {interest}
+                    Show: {showName}
                     <button
                       onClick={() =>
                         setFilters((prev) => ({
                           ...prev,
                           interestInShow: prev.interestInShow.filter(
-                            (i) => i !== interest
+                            (name) => name !== showName
                           ),
                         }))
                       }
@@ -648,115 +763,160 @@ const Users = () => {
         </div>
 
         <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Interest in Show
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Artworks
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <img
-                          className="h-10 w-10 rounded-full object-cover"
-                          src={
-                            user.photoUrl ||
-                            "https://ui-avatars.com/api/?name=" +
-                              encodeURIComponent(user.name)
-                          }
-                          alt={user.name}
-                        />
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {user.name}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{user.role}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.status === "active"
-                          ? "bg-green-100 text-green-800"
-                          : user.status === "inactive"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-yellow-100 text-yellow-800"
-                      }`}
-                    >
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">
-                      {user.interestInShow || "N/A"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => handleArtworksClick(user.id!)}
-                      className="text-sm text-indigo-600 hover:text-indigo-900 hover:underline"
-                    >
-                      {user.artworks?.length || 0} artworks
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {user.role === "on-boarding" && (
-                      <button
-                        onClick={() => handleAcceptIntoShow(user)}
-                        className="text-green-600 hover:text-green-900 mr-4"
-                      >
-                        Accept into Show
-                      </button>
-                    )}
-                    {user.artshowId && (
-                      <button
-                        onClick={() => handleRemoveFromShow(user)}
-                        className="text-red-600 hover:text-red-900 mr-4"
-                      >
-                        Remove from Show
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleOpenModal(user)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                  </td>
+          <div className="overflow-x-auto w-full">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  {columnVisibility.name && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                  )}
+                  {columnVisibility.email && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </th>
+                  )}
+                  {columnVisibility.role && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Role
+                    </th>
+                  )}
+                  {columnVisibility.status && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  )}
+                  {columnVisibility.interestInShow && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Interest in Show
+                    </th>
+                  )}
+                  {columnVisibility.artworks && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Artworks
+                    </th>
+                  )}
+                  {columnVisibility.actions && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredUsers.map((user) => (
+                  <tr key={user.id}>
+                    {columnVisibility.name && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={
+                                user.photoUrl ||
+                                "https://ui-avatars.com/api/?name=" +
+                                  encodeURIComponent(user.name)
+                              }
+                              alt={user.name}
+                            />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {user.name}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    )}
+                    {columnVisibility.email && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {user.email}
+                        </div>
+                      </td>
+                    )}
+                    {columnVisibility.role && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{user.role}</div>
+                      </td>
+                    )}
+                    {columnVisibility.status && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            user.status === "accepted"
+                              ? "bg-green-100 text-green-800"
+                              : user.status === "shown"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : user.status === "showing"
+                              ? "bg-blue-100 text-blue-800"
+                              : user.status === "rejected"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {user.status}
+                        </span>
+                      </td>
+                    )}
+                    {columnVisibility.interestInShow && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {user.interestInShow
+                            ? user.interestInShow
+                            : "None Specified"}
+                        </div>
+                      </td>
+                    )}
+                    {columnVisibility.artworks && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleArtworksClick(user.id!)}
+                          className="text-sm text-indigo-600 hover:text-indigo-900 hover:underline"
+                        >
+                          {user.artworks?.length || 0} artworks
+                        </button>
+                      </td>
+                    )}
+                    {columnVisibility.actions && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {user.role === "on-boarding" && (
+                          <button
+                            onClick={() => handleAcceptIntoShow(user)}
+                            className={`text-green-600 hover:text-green-900 mr-4 ${
+                              !user.artworks || user.artworks.length === 0
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                            }`}
+                            disabled={
+                              !user.artworks || user.artworks.length === 0
+                            }
+                          >
+                            Accept into Show
+                          </button>
+                        )}
+                        {user.artshowId && (
+                          <button
+                            onClick={() => handleRemoveFromShow(user)}
+                            className="text-red-600 hover:text-red-900 mr-4"
+                          >
+                            Remove from Show
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenModal(user)}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {isModalOpen && (
@@ -837,7 +997,7 @@ const Users = () => {
                   <div>
                     <label className={label}>Status</label>
                     <select
-                      value={formData.status}
+                      value={formData.status || ""}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -847,9 +1007,10 @@ const Users = () => {
                       className={select}
                       required
                     >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="banned">Banned</option>
+                      <option value="showing">Showing</option>
+                      <option value="shown">Shown</option>
+                      <option value="accepted">Accepted</option>
+                      <option value="rejected">Rejected</option>
                     </select>
                   </div>
                   <div>

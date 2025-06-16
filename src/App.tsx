@@ -28,6 +28,8 @@ import MyArtwork from "./pages/Artist/MyArtwork";
 import PublicArtshow from "./pages/PublicArtshow/PublicArtshow";
 import ArtshowArtworks from "./pages/Artshows/ArtshowArtworks";
 import ArtshowArtists from "./pages/Artshows/ArtshowArtists";
+import OnboardArt from "./pages/Artist/OnboardArt";
+import Store from "./pages/Store/Store";
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -38,7 +40,9 @@ const App = () => {
   } = useAppSelector((state) => state.profile);
   const { user } = useAppSelector((state) => state.auth);
   const location = useLocation();
-  const hideChatDrawer = location.pathname.startsWith("/artshow");
+  const hideChatDrawer =
+    location.pathname.startsWith("/artshow/") &&
+    !location.pathname.startsWith("/artshow/artworks");
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -71,6 +75,7 @@ const App = () => {
         {/* Public Routes */}
         <Route path="/auth" element={<Auth />} />
         <Route path="/artshow" element={<PublicArtshow />} />
+        <Route path="/store" element={<Store />} />
 
         {/* Protected Routes */}
         <Route element={<AuthRoutes />}>
@@ -105,6 +110,7 @@ const App = () => {
             }
           >
             <Route path="artist/my-artwork" element={<MyArtwork />} />
+            <Route path="artist/onboard-art" element={<OnboardArt />} />
           </Route>
 
           {/* Admin Routes */}

@@ -207,6 +207,7 @@ const UserArtworks = () => {
     const statusColors: Record<NonNullable<Artwork["showStatus"]>, string> = {
       accepted: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
+      shown: "bg-blue-100 text-blue-800",
     };
 
     return (

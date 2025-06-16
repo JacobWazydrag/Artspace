@@ -15,9 +15,9 @@ import { db } from "../firebase";
 export interface Artshow {
   id?: string;
   name: string;
+  subTitle: string;
   startDate: string;
   endDate: string;
-  mediums: string[];
   locationId: string;
   description?: string;
   createdAt: Timestamp;
@@ -101,6 +101,7 @@ export const closeShow = createAsyncThunk(
       batch.update(artworkRef, {
         artshowId: null,
         locationId: null,
+        showStatus: "shown",
         beenInShows: [...(artworkData.beenInShows || []), artshowId],
       });
     });
@@ -134,7 +135,7 @@ export const closeShow = createAsyncThunk(
       });
     }
 
-    // Commit all changes
+    // Commit all updates
     await batch.commit();
 
     return artshowId;

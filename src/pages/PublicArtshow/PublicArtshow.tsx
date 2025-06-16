@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
-import { fetchArtshows } from "../../features/artshowsSlice";
-import { fetchUsers } from "../../features/usersSlice";
-import { fetchArtshowArtworks } from "../../features/artworkSlice";
-import { fetchMediums } from "../../features/mediumsSlice";
-import { Artshow } from "../../features/artshowsSlice";
-import { User } from "../../features/usersSlice";
-import { Artwork } from "../../features/artworkSlice";
+import { fetchPublicArtshowData } from "../../features/publicSlice";
 import { motion, AnimatePresence } from "framer-motion";
 import { NumericFormat } from "react-number-format";
 
@@ -136,70 +130,26 @@ const CollapsibleDescription = ({ text }: { text: string }) => {
 
 const PublicArtshow = () => {
   const dispatch = useAppDispatch();
-  const { data: artshows } = useAppSelector((state) => state.artshows);
-  const { data: users } = useAppSelector((state) => state.users);
-  const { data: artworks } = useAppSelector((state) => state.artwork);
+  const { activeArtshow, publicArtists, publicArtworks, loading, error } =
+    useAppSelector((state) => state.public);
   const { data: mediums } = useAppSelector((state) => state.mediums);
-  const [activeArtshow, setActiveArtshow] = useState<Artshow | null>(null);
-  const [showArtists, setShowArtists] = useState<User[]>([]);
-  const [showArtworks, setShowArtworks] = useState<Artwork[]>([]);
   const [selectedArtwork, setSelectedArtwork] = useState<{
     images: string[];
     index: number;
   } | null>(null);
 
   useEffect(() => {
-    dispatch(fetchArtshows());
-    dispatch(fetchUsers());
-    dispatch(fetchMediums());
+    dispatch(fetchPublicArtshowData());
   }, [dispatch]);
-
-  useEffect(() => {
-    // Find the active art show
-    const active = artshows.find((show) => show.status === "active");
-    if (active) {
-      setActiveArtshow(active);
-      // Fetch artworks for this show
-      dispatch(fetchArtshowArtworks(active.id!));
-    }
-  }, [artshows, dispatch]);
-
-  useEffect(() => {
-    if (activeArtshow && users && artworks) {
-      // Get artists in this show
-      const artists = users.filter((user) =>
-        activeArtshow.artistIds?.includes(user.id!)
-      );
-      setShowArtists(artists);
-
-      // Set all artworks from the fetchArtshowArtworks call
-      setShowArtworks(artworks);
-
-      console.log("Active Artshow:", activeArtshow);
-      console.log("All Artworks:", artworks);
-      console.log("Artists in Show:", artists);
-    }
-  }, [activeArtshow, users, artworks]);
 
   const getMediumName = (mediumId: string) => {
     const medium = mediums?.find((m) => m.id === mediumId);
     return medium?.name || mediumId;
   };
 
-  if (!activeArtshow) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            No Active Art Show
-          </h1>
-          <p className="text-gray-600">
-            There is currently no active art show to display.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!activeArtshow) return <div>No active artshow found.</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -223,8 +173,13 @@ const PublicArtshow = () => {
               {activeArtshow.name}
             </h1>
             <p className="max-w-2xl mb-6 font-light text-black lg:mb-8 md:text-lg lg:text-xl">
-              {new Date(activeArtshow.startDate).toLocaleDateString()} -{" "}
-              {new Date(activeArtshow.endDate).toLocaleDateString()}
+              {new Date(
+                activeArtshow.startDate + "T00:00:00"
+              ).toLocaleDateString()}{" "}
+              -{" "}
+              {new Date(
+                activeArtshow.endDate + "T00:00:00"
+              ).toLocaleDateString()}
             </p>
             <p className="max-w-2xl mb-6 font-light text-black lg:mb-8 md:text-lg lg:text-xl">
               {activeArtshow.description}
@@ -248,8 +203,8 @@ const PublicArtshow = () => {
           {activeArtshow.name}
         </h1>
         <p className="text-white mb-2">
-          {new Date(activeArtshow.startDate).toLocaleDateString()} -{" "}
-          {new Date(activeArtshow.endDate).toLocaleDateString()}
+          {new Date(activeArtshow.startDate + "T00:00:00").toLocaleDateString()}{" "}
+          - {new Date(activeArtshow.endDate + "T00:00:00").toLocaleDateString()}
         </p>
         <p className="text-white">{activeArtshow.description}</p>
       </div>
@@ -260,7 +215,7 @@ const PublicArtshow = () => {
           Featured Artists
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {showArtists.map((artist) => (
+          {publicArtists.map((artist) => (
             <motion.div
               key={artist.id}
               initial={{ opacity: 0, y: 20 }}
@@ -289,7 +244,7 @@ const PublicArtshow = () => {
                 </div>
                 <p className="text-gray-700 mb-4">{artist.bio}</p>
                 <div className="space-y-4">
-                  {showArtworks
+                  {publicArtworks
                     .filter((artwork) => artwork.artistId === artist.id)
                     .map((artwork) => (
                       <div key={artwork.id} className="border-t pt-4">
@@ -354,7 +309,7 @@ const PublicArtshow = () => {
       <footer className="bg-gray-900 text-white py-8">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4">Art Space Chicago</h2>
+            <h2 className="text-2xl font-bold mb-4">ArtSpace Chicago</h2>
             <p className="text-gray-400">
               Celebrating local artists and their creative expressions
             </p>

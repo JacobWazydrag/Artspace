@@ -358,8 +358,11 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setSelectedFiles(files);
-    setPreviewUrls(files.map((file) => URL.createObjectURL(file)));
+    setSelectedFiles((prev) => [...prev, ...files]);
+    setPreviewUrls((prev) => [
+      ...prev,
+      ...files.map((file) => URL.createObjectURL(file)),
+    ]);
   };
 
   const handleRemoveImage = (index: number) => {
@@ -1060,7 +1063,16 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
                   e.stopPropagation();
                   setAddingImagesToArtworkId(artwork.id!);
                 }}
-                className="px-3 py-1 text-sm text-indigo-600 hover:text-indigo-900"
+                disabled={
+                  artwork.showStatus === "shown" ||
+                  artwork.showStatus === "accepted"
+                }
+                className={`px-3 py-1 text-sm ${
+                  artwork.showStatus === "shown" ||
+                  artwork.showStatus === "accepted"
+                    ? "text-gray-400 cursor-not-allowed"
+                    : "text-indigo-600 hover:text-indigo-900"
+                }`}
               >
                 Add Images
               </button>
@@ -1069,7 +1081,16 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
                   e.stopPropagation();
                   handleEditArtwork(artwork);
                 }}
-                className="px-3 py-1 text-sm text-indigo-600 hover:text-indigo-900"
+                disabled={
+                  artwork.showStatus === "shown" ||
+                  artwork.showStatus === "accepted"
+                }
+                className={`px-3 py-1 text-sm ${
+                  artwork.showStatus === "shown" ||
+                  artwork.showStatus === "accepted"
+                    ? "text-gray-400 cursor-not-allowed"
+                    : "text-indigo-600 hover:text-indigo-900"
+                }`}
               >
                 Edit
               </button>
@@ -1078,10 +1099,32 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
                   e.stopPropagation();
                   handleDeleteArtwork(artwork.id!);
                 }}
-                className="px-3 py-1 text-sm text-red-600 hover:text-red-900"
+                disabled={
+                  artwork.showStatus === "shown" ||
+                  artwork.showStatus === "accepted"
+                }
+                className={`px-3 py-1 text-sm ${
+                  artwork.showStatus === "shown" ||
+                  artwork.showStatus === "accepted"
+                    ? "text-gray-400 cursor-not-allowed"
+                    : "text-red-600 hover:text-red-900"
+                }`}
               >
                 Delete
               </button>
+              {artwork.showStatus && (
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    artwork.showStatus === "shown"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : artwork.showStatus === "accepted"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {artwork.showStatus}
+                </span>
+              )}
               <h6 className="text-sm text-gray-500">
                 {expandedArtworks.has(artwork.id!) ? "Hide" : "Show"}
               </h6>
@@ -1116,7 +1159,7 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
                   <p className="text-gray-600 mb-2">
                     {artwork.height} x {artwork.width} {artwork.uom}
                   </p>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 relative">
                     {artwork.images?.map((image: string, index: number) => (
                       <div key={index} className="relative">
                         <img
@@ -1129,7 +1172,16 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
                             e.stopPropagation();
                             handleDeleteImage(artwork.id!, image);
                           }}
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          disabled={
+                            artwork.showStatus === "shown" ||
+                            artwork.showStatus === "accepted"
+                          }
+                          className={`absolute top-2 right-2 ${
+                            artwork.showStatus === "shown" ||
+                            artwork.showStatus === "accepted"
+                              ? "bg-gray-400 cursor-not-allowed"
+                              : "bg-red-500 hover:bg-red-600"
+                          } text-white rounded-full p-1`}
                         >
                           <svg
                             className="h-4 w-4"
@@ -1147,6 +1199,21 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
                         </button>
                       </div>
                     ))}
+                    {artwork.showStatus && (
+                      <div className="absolute bottom-2 right-2">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            artwork.showStatus === "shown"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : artwork.showStatus === "accepted"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {artwork.showStatus}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

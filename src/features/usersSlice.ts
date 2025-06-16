@@ -10,8 +10,11 @@ import {
   Timestamp,
   query,
   where,
+  onSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { ThunkDispatch } from "@reduxjs/toolkit";
+import { RootState } from "../store/store";
 
 export interface User {
   id?: string;
@@ -19,7 +22,7 @@ export interface User {
   email: string;
   bio: string;
   role: "manager" | "on-boarding" | "artist";
-  status: "active" | "inactive" | "banned";
+  status: "accepted" | "rejected" | "shown" | "showing" | null;
   contactInfo?: {
     phone?: string;
     address?: string;
@@ -129,6 +132,9 @@ const usersSlice = createSlice({
       state.loading = false;
       state.error = null;
     },
+    setUsers: (state, action) => {
+      state.data = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -227,5 +233,19 @@ const usersSlice = createSlice({
   },
 });
 
-export const { clearUsers } = usersSlice.actions;
+// Live updates thunk
+export const listenToUsers =
+  () => (dispatch: ThunkDispatch<RootState, void, any>) => {
+    const usersRef = collection(db, "users");
+    // You can add a query here if you want to filter out admins/managers
+    return onSnapshot(usersRef, (snapshot) => {
+      const users = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      dispatch(usersSlice.actions.setUsers(users));
+    });
+  };
+
+export const { clearUsers, setUsers } = usersSlice.actions;
 export default usersSlice.reducer;

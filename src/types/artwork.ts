@@ -13,7 +13,7 @@ export interface Artwork {
   height?: number;
   width?: number;
   status?: "pending" | "approved" | "rejected";
-  showStatus?: "accepted" | "rejected" | null;
+  showStatus?: "accepted" | "rejected" | "shown" | null;
   availability?: "available" | "sold" | "not for sale";
   createdAt: string;
   updatedAt: string;

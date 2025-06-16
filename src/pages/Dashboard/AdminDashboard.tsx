@@ -34,12 +34,12 @@ const Dashboard = () => {
       icon: CalendarDaysIcon,
       color: "bg-purple-500",
     },
-    {
-      name: "Mediums",
-      value: mediums?.length || 0,
-      icon: Squares2X2Icon,
-      color: "bg-yellow-500",
-    },
+    // {
+    //   name: "Mediums",
+    //   value: mediums?.length || 0,
+    //   icon: Squares2X2Icon,
+    //   color: "bg-yellow-500",
+    // },
   ];
 
   return (
@@ -47,9 +47,7 @@ const Dashboard = () => {
       <ContentWrapper>
         <div className="mb-8">
           <h1 className={h1ReverseDark}>Welcome to your Dashboard</h1>
-          <p className={pReverseDark}>
-            You are an admin with the role: {profile?.role}
-          </p>
+          <p className={pReverseDark}>Your role: {profile?.role}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -71,7 +69,7 @@ const Dashboard = () => {
           ))}
         </div>
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
             <div className="space-y-4">
@@ -85,7 +83,7 @@ const Dashboard = () => {
               <p className="text-gray-600">No quick actions available.</p>
             </div>
           </div>
-        </div>
+        </div> */}
       </ContentWrapper>
     </div>
   );

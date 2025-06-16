@@ -4,10 +4,11 @@ import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
 import { logout } from "../features/authSlice";
 import { clearProfile } from "../features/profileSlice";
-import logo from "../assets/logo.svg";
+import logo from "../assets/artspaceLogo.jpg";
 import {
   PaintBrushIcon,
   ArrowRightOnRectangleIcon,
+  PlusCircleIcon,
 } from "@heroicons/react/24/outline";
 
 const ArtistSidebar = () => {
@@ -29,10 +30,10 @@ const ArtistSidebar = () => {
       <div className="mb-8 flex items-center gap-3">
         <img
           src={logo}
-          alt="Art Space Chicago Logo"
+          alt="ArtSpace Chicago Logo"
           className="h-10 w-10 object-contain"
         />
-        <h1 className="text-2xl font-bold">Art Space</h1>
+        <h1 className="text-2xl font-bold">ArtSpace</h1>
       </div>
       <nav>
         <ul className="space-y-2">
@@ -48,6 +49,21 @@ const ArtistSidebar = () => {
               <span className="flex items-center gap-3">
                 <PaintBrushIcon className="w-5 h-5" />
                 My Artwork
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/artist/onboard-art"
+              className={`block px-4 py-2 rounded ${
+                isActive("/artist/onboard-art")
+                  ? "bg-gray-900"
+                  : "hover:bg-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <PlusCircleIcon className="w-5 h-5" />
+                Onboard Art
               </span>
             </Link>
           </li>
