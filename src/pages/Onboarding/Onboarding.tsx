@@ -95,12 +95,14 @@ const Onboarding = () => {
       ),
     },
     {
-      title: "Social Links",
+      title: "Links",
       component: (
         <SocialLinks
           onComplete={handleStepComplete}
           isComplete={Boolean(
-            profile?.socialLinks && Object.keys(profile.socialLinks).length > 0
+            profile?.socialLinks?.instagram?.trim() &&
+              profile?.paymentInformation?.venmo?.trim() &&
+              profile?.paymentInformation?.zelle?.trim()
           )}
         />
       ),

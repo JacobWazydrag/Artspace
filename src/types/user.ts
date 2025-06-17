@@ -15,7 +15,11 @@ export interface UserProfile {
     address?: string;
   };
   socialLinks?: {
-    [key: string]: string;
+    instagram?: string;
+  };
+  paymentInformation?: {
+    venmo?: string;
+    zelle?: string;
   };
   artworks?: string[]; // Array of artwork IDs
   onboardingCompleted: boolean;
@@ -23,4 +27,5 @@ export interface UserProfile {
   updatedAt: string;
   photoUrl?: string | null;
   interestInShow?: string;
+  shownAtArtspace?: boolean;
 }

@@ -46,6 +46,9 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
   const [interestInShow, setInterestInShow] = useState<string>(
     profile?.interestInShow || ""
   );
+  const [shownAtArtspace, setShownAtArtspace] = useState<boolean | null>(
+    profile?.shownAtArtspace ?? null
+  );
   const storage = getStorage();
 
   // Update form when profile changes
@@ -59,6 +62,7 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
       });
       setPreviewUrl(profile.photoUrl || null);
       setInterestInShow(profile.interestInShow || "");
+      setShownAtArtspace(profile.shownAtArtspace ?? null);
     }
   }, [profile]);
 
@@ -131,7 +135,8 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
       basicInfo.email === profile.email &&
       basicInfo.bio === profile.bio &&
       !selectedFile &&
-      interestInShow === (profile.interestInShow || "")
+      interestInShow === (profile.interestInShow || "") &&
+      shownAtArtspace === profile.shownAtArtspace
     ) {
       return;
     }
@@ -164,6 +169,7 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
         bio: basicInfo.bio,
         photoUrl,
         interestInShow,
+        shownAtArtspace,
         updatedAt: new Date().toISOString(),
       });
 
@@ -176,6 +182,7 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
           bio: basicInfo.bio,
           photoUrl,
           interestInShow,
+          shownAtArtspace,
         })
       );
 
@@ -246,7 +253,9 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
         </div>
 
         <div>
-          <label className={label}>Full Name</label>
+          <label className={label}>
+            Full Name <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             value={basicInfo.name}
@@ -259,7 +268,9 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
         </div>
 
         <div>
-          <label className={label}>Email</label>
+          <label className={label}>
+            Email <span className="text-red-500">*</span>
+          </label>
           <input
             type="email"
             value={basicInfo.email}
@@ -272,23 +283,30 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
         </div>
 
         <div>
-          <label className={label}>Bio</label>
+          <label className={label}>
+            Bio <span className="text-red-500">*</span>
+          </label>
           <textarea
             value={basicInfo.bio}
             onChange={(e) => handleChange("bio", e.target.value)}
             className={textarea}
             rows={4}
             placeholder="Tell us about yourself"
+            required
             disabled={isSubmitting}
           />
         </div>
 
         <div>
-          <label className={label}>Interest In Show</label>
+          <label className={label}>
+            Which show are you interested in?{" "}
+            <span className="text-red-500">*</span>
+          </label>
           <select
             value={interestInShow}
             onChange={(e) => setInterestInShow(e.target.value)}
             className={input}
+            required
             disabled={isSubmitting}
           >
             <option value="">Select a show</option>
@@ -300,6 +318,41 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
                 </option>
               ))}
           </select>
+        </div>
+
+        <div>
+          <label className={label}>
+            Have you shown at ArtSpace before?{" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <div className="mt-2 space-x-4">
+            <label className="inline-flex items-center">
+              <input
+                type="radio"
+                name="shownAtArtspace"
+                value="yes"
+                checked={shownAtArtspace === true}
+                onChange={() => setShownAtArtspace(true)}
+                required
+                disabled={isSubmitting}
+                className="form-radio h-4 w-4 text-indigo-600"
+              />
+              <span className="ml-2">Yes</span>
+            </label>
+            <label className="inline-flex items-center">
+              <input
+                type="radio"
+                name="shownAtArtspace"
+                value="no"
+                checked={shownAtArtspace === false}
+                onChange={() => setShownAtArtspace(false)}
+                required
+                disabled={isSubmitting}
+                className="form-radio h-4 w-4 text-indigo-600"
+              />
+              <span className="ml-2">No</span>
+            </label>
+          </div>
         </div>
 
         <div className="flex justify-end">

@@ -106,7 +106,9 @@ const ContactInfo = ({ onComplete, isComplete }: ContactInfoProps) => {
       <h2 className="text-2xl font-bold mb-6">Contact Information</h2>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="mb-5">
-          <label className={label}>Phone Number</label>
+          <label className={label}>
+            Phone Number <span className="text-red-500">*</span>
+          </label>
           <input
             type="tel"
             value={formatPhone(contactInfo.phone)}
@@ -141,13 +143,16 @@ const ContactInfo = ({ onComplete, isComplete }: ContactInfoProps) => {
         </div>
 
         <div>
-          <label className={label}>Address</label>
+          <label className={label}>
+            Address <span className="text-red-500">*</span>
+          </label>
           <textarea
             value={contactInfo.address}
             onChange={(e) => handleChange("address", e.target.value)}
             className={textarea}
             rows={3}
             placeholder="Enter your full address"
+            required
             disabled={isSubmitting}
           />
         </div>

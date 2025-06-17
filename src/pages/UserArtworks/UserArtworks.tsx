@@ -8,6 +8,7 @@ import {
 } from "../../features/artworkSlice";
 import { fetchArtshows } from "../../features/artshowsSlice";
 import { fetchLocations } from "../../features/locationsSlice";
+import { fetchMediums } from "../../features/mediumsSlice";
 import { toast } from "react-hot-toast";
 import ContentWrapper from "../../components/ContentWrapper";
 import { Artwork } from "../../types/artwork";
@@ -42,8 +43,14 @@ const ImageGallery = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center">
-      <div className="relative max-w-4xl w-full mx-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-w-4xl w-full mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="absolute top-4 right-4 z-10">
           <button
             onClick={onClose}
@@ -143,6 +150,7 @@ const UserArtworks = () => {
   const { data: artworks, loading } = useAppSelector((state) => state.artwork);
   const { data: artshows } = useAppSelector((state) => state.artshows);
   const { data: locations } = useAppSelector((state) => state.locations);
+  const { data: mediums } = useAppSelector((state) => state.mediums);
 
   useEffect(() => {
     if (userId) {
@@ -150,6 +158,7 @@ const UserArtworks = () => {
       dispatch(fetchArtistArtworks(userId));
       dispatch(fetchArtshows());
       dispatch(fetchLocations());
+      dispatch(fetchMediums());
     }
   }, [dispatch, userId]);
 
@@ -226,6 +235,11 @@ const UserArtworks = () => {
     return show?.name || "Unknown Show";
   };
 
+  const getMediumName = (mediumId: string) => {
+    const medium = mediums?.find((m) => m.id === mediumId);
+    return medium?.name || mediumId;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -279,7 +293,7 @@ const UserArtworks = () => {
                   <img
                     src={artwork.images[0]}
                     alt={artwork.title}
-                    className="w-full h-48 object-cover"
+                    className="w-full h-48 object-contain bg-gray-100"
                   />
                   {artwork.images.length > 1 && (
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
@@ -295,11 +309,17 @@ const UserArtworks = () => {
                   <h3 className="text-lg font-semibold">{artwork.title}</h3>
                   {getStatusBadge(artwork)}
                 </div>
-                <p className="text-gray-600 mb-1">{artwork.medium}</p>
+                <p className="text-gray-600 mb-1">
+                  {getMediumName(artwork.medium)}
+                </p>
                 <p className="text-gray-600 mb-1">
                   {artwork.height} X {artwork.width} {artwork.uom}
                 </p>
-                <p className="text-gray-600 mb-2">{artwork.date}</p>
+                <p className="text-gray-600 mb-2">
+                  {artwork.date
+                    ? new Date(artwork.date).toLocaleDateString("en-US")
+                    : ""}
+                </p>
                 <p className="text-gray-700 mb-4">{artwork.description}</p>
 
                 {artwork.artshowId && (
