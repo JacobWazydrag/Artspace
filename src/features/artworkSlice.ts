@@ -222,6 +222,18 @@ export const addArtworkImages = createAsyncThunk(
       const artwork = artworkDoc.data();
       const currentImages = artwork.images || [];
 
+      // Delete existing images from storage
+      const deletePromises = currentImages.map(async (url: string) => {
+        const imageRef = ref(storage, url);
+        try {
+          await deleteObject(imageRef);
+        } catch (error) {
+          console.error("Error deleting image from storage:", error);
+        }
+      });
+
+      await Promise.all(deletePromises);
+
       // Upload new images to Firebase Storage
       const newImageUrls = await Promise.all(
         images.map(async (image) => {
@@ -239,14 +251,13 @@ export const addArtworkImages = createAsyncThunk(
         })
       );
 
-      // Update artwork document with new images
-      const updatedImages = [...currentImages, ...newImageUrls];
+      // Update artwork document with new images (replacing old ones)
       await updateDoc(artworkRef, {
-        images: updatedImages,
+        images: newImageUrls,
         updatedAt: serverTimestamp(),
       });
 
-      return { artworkId, images: updatedImages };
+      return { artworkId, images: newImageUrls };
     } catch (error: any) {
       console.error("Error in addArtworkImages:", error);
       throw error;

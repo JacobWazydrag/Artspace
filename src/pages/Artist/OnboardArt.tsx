@@ -18,8 +18,7 @@ const OnboardArt = () => {
   }, [profile?.role, navigate]);
 
   const handleComplete = () => {
-    // Refresh the page to show new artwork
-    window.location.reload();
+    // No navigation or reload needed; artwork list will refresh automatically
   };
 
   return (

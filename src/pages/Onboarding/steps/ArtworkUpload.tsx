@@ -217,7 +217,7 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
   const profileState = useAppSelector((state) => state.profile);
   const artworkState = useAppSelector((state) => state.artwork);
   const { data: mediums } = useAppSelector((state) => state.mediums);
-  const { data: artworks, loading } = useAppSelector((state) => state.artwork);
+  const { data: artworks } = useAppSelector((state) => state.artwork);
   const [artworkList, setArtworkList] = useState<Artwork[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newArtwork, setNewArtwork] = useState<Partial<Artwork>>({
@@ -233,7 +233,7 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingArtworkId, setLoadingArtworkId] = useState<string | null>(null);
   const [editingArtworkId, setEditingArtworkId] = useState<string | null>(null);
   const [addingImagesToArtworkId, setAddingImagesToArtworkId] = useState<
     string | null
@@ -241,11 +241,6 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
   const navigate = useNavigate();
   const [selectedUnits, setSelectedUnits] = useState("in");
   const [selectedMediums, setSelectedMediums] = useState<string[]>([]);
-  const [expandedArtworks, setExpandedArtworks] = useState<Set<string>>(
-    new Set()
-  );
-
-  // Always call hooks first!
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<ArtworkFormData>({
     title: "",
@@ -274,11 +269,17 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
         .unwrap()
         .then((artworks) => {
           if (artworks) {
-            // Format artworks with proper date handling
-            const formattedArtworks = artworks.map((artwork) => ({
-              ...artwork,
-              date: artwork.date || new Date().toISOString().split("T")[0],
-            }));
+            // Format artworks with proper date handling and sort by updatedAt
+            const formattedArtworks = artworks
+              .map((artwork) => ({
+                ...artwork,
+                date: artwork.date || new Date().toISOString().split("T")[0],
+              }))
+              .sort((a, b) => {
+                const dateA = new Date(a.updatedAt || a.date).getTime();
+                const dateB = new Date(b.updatedAt || b.date).getTime();
+                return dateB - dateA; // Sort in descending order (newest first)
+              });
             setArtworkList(formattedArtworks);
           }
         })
@@ -301,7 +302,6 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
   }
 
   const { data: profile } = profileState;
-  const loadingArtworks = artworkState?.loading || false;
 
   // If we don't have a profile ID, show an error
   if (!profile?.id) {
@@ -311,18 +311,6 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
           <p className="text-red-600">
             Error: No profile ID found. Please complete your profile first.
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading spinner while fetching artworks
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your artworks...</p>
         </div>
       </div>
     );
@@ -358,11 +346,10 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setSelectedFiles((prev) => [...prev, ...files]);
-    setPreviewUrls((prev) => [
-      ...prev,
-      ...files.map((file) => URL.createObjectURL(file)),
-    ]);
+    if (files.length > 0) {
+      setSelectedFiles([files[0]]);
+      setPreviewUrls([URL.createObjectURL(files[0])]);
+    }
   };
 
   const handleRemoveImage = (index: number) => {
@@ -393,41 +380,7 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
     setEditingArtworkId(artwork.id!);
     setNewArtwork(artwork);
     setSelectedUnits(artwork.uom); // Set the selected units to match the artwork's uom
-    // Ensure the artwork is expanded when editing
-    setExpandedArtworks((prev) => {
-      const newSet = new Set(prev);
-      newSet.add(artwork.id!);
-      return newSet;
-    });
-  };
-
-  const refreshArtworks = async () => {
-    if (profileState?.data?.id) {
-      try {
-        const artworks = await dispatch(
-          fetchArtistArtworks(profileState.data.id)
-        ).unwrap();
-        if (artworks) {
-          const formattedArtworks = artworks.map((artwork) => ({
-            ...artwork,
-            date: artwork.date || new Date().toISOString().split("T")[0],
-          }));
-          setArtworkList(formattedArtworks);
-        }
-      } catch (error) {
-        console.error("Error refreshing artworks:", error);
-      }
-    }
-  };
-
-  const handleDeleteArtwork = async (artworkId: string) => {
-    try {
-      await dispatch(deleteArtwork(artworkId)).unwrap();
-      toast.success("Artwork deleted successfully");
-      await refreshArtworks();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete artwork");
-    }
+    setSelectedMediums([artwork.medium]); // Set the selected medium to match the artwork's medium
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -460,12 +413,12 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
       return;
     }
 
-    setIsSubmitting(true);
     try {
+      setLoadingArtworkId(editingArtworkId || "new");
       const artworkInput = {
         title: newArtwork.title || "",
-        medium: selectedMediums[0], // For now, just use the first medium
-        uom: selectedUnits, // Use the selected units
+        medium: selectedMediums[0],
+        uom: selectedUnits,
         date: newArtwork.date || new Date().toISOString().split("T")[0],
         description: newArtwork.description || "",
         artistId: profile.id,
@@ -481,6 +434,16 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
           ...artworkInput,
           updatedAt: new Date().toISOString(),
         });
+
+        // Update local state
+        setArtworkList((prevList) =>
+          prevList.map((artwork) =>
+            artwork.id === editingArtworkId
+              ? { ...artwork, ...artworkInput }
+              : artwork
+          )
+        );
+
         toast.success("Artwork updated successfully");
         setEditingArtworkId(null);
       } else {
@@ -492,13 +455,14 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
           })
         ).unwrap();
 
-        // Get current artworks from the state
-        const currentArtworks = artworkState?.data || [];
-        const updatedArtworks = [...currentArtworks, result].map(
+        // Update local state
+        setArtworkList((prevList) => [...prevList, result]);
+
+        // Update profile with all artwork IDs
+        const updatedArtworks = [...(artworkState?.data || []), result].map(
           (artwork) => artwork.id
         );
 
-        // Update profile with all artwork IDs
         await updateDoc(doc(db, "users", profile.id), {
           artworks: updatedArtworks,
           updatedAt: new Date().toISOString(),
@@ -531,9 +495,6 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
       setSelectedMediums([]);
       setSelectedUnits("in");
 
-      // Refresh artworks list
-      await refreshArtworks();
-
       toast.success(
         editingArtworkId
           ? "Artwork updated successfully"
@@ -544,7 +505,7 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
       setError(error.message || "Failed to upload artwork. Please try again.");
       toast.error(error.message || "Failed to upload artwork");
     } finally {
-      setIsSubmitting(false);
+      setLoadingArtworkId(null);
     }
   };
 
@@ -552,14 +513,12 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
     if (!profileState?.data?.id) return;
 
     try {
-      setIsSubmitting(true);
+      setLoadingArtworkId(null);
       await dispatch(completeOnboarding(profileState.data.id)).unwrap();
       toast.success("Onboarding completed successfully");
       navigate("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Failed to complete onboarding");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -631,19 +590,28 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
     }
 
     try {
-      setIsSubmitting(true);
-      await dispatch(
+      setLoadingArtworkId(artworkId);
+      const result = await dispatch(
         addArtworkImages({ artworkId, images: selectedFiles })
       ).unwrap();
+
+      // Update just this artwork in the local state
+      setArtworkList((prevList) =>
+        prevList.map((artwork) =>
+          artwork.id === artworkId
+            ? { ...artwork, images: result.images }
+            : artwork
+        )
+      );
+
       toast.success("Images added successfully");
       setSelectedFiles([]);
       setPreviewUrls([]);
       setAddingImagesToArtworkId(null);
-      await refreshArtworks();
     } catch (error: any) {
       toast.error(error.message || "Failed to add images");
     } finally {
-      setIsSubmitting(false);
+      setLoadingArtworkId(null);
     }
   };
 
@@ -652,155 +620,335 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
     return medium?.name || mediumId;
   };
 
-  const renderArtworkForm = (artwork: Partial<Artwork>, isEditing = false) => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h4 className="text-lg font-semibold mb-4">
-        {isEditing ? "Edit Artwork" : "Add New Artwork"}
-      </h4>
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (isEditing && artwork.id) {
-            try {
-              setIsSubmitting(true);
-              const artworkRef = doc(db, "artworks", artwork.id);
-              await updateDoc(artworkRef, {
-                ...newArtwork,
-                medium: selectedMediums[0],
-                updatedAt: new Date().toISOString(),
-                uom: selectedUnits,
-              });
-              toast.success("Artwork updated successfully");
-              setEditingArtworkId(null);
-              await refreshArtworks();
-            } catch (error: any) {
-              toast.error(error.message || "Failed to update artwork");
-            } finally {
-              setIsSubmitting(false);
+  // Add this before renderArtworkForm
+  const isSaveDisabled = (isEditing: boolean) => {
+    const isLoading =
+      loadingArtworkId === (isEditing ? editingArtworkId : "new");
+    return (
+      isLoading ||
+      !newArtwork.title ||
+      !selectedMediums[0] ||
+      (!isEditing && selectedFiles.length === 0) ||
+      !newArtwork.height ||
+      !newArtwork.width ||
+      !newArtwork.description ||
+      !newArtwork.date
+    );
+  };
+
+  const renderArtworkForm = (artwork: Partial<Artwork>, isEditing = false) => {
+    const isLoading = loadingArtworkId === (isEditing ? artwork.id : "new");
+
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md relative">
+        {isLoading && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg z-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          </div>
+        )}
+        <h4 className="text-lg font-semibold mb-4">
+          {isEditing ? "Edit Artwork" : "Add New Artwork"}
+        </h4>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (isEditing && artwork.id) {
+              try {
+                setLoadingArtworkId(artwork.id);
+                const artworkRef = doc(db, "artworks", artwork.id);
+                await updateDoc(artworkRef, {
+                  ...newArtwork,
+                  medium: selectedMediums[0],
+                  updatedAt: new Date().toISOString(),
+                  uom: selectedUnits,
+                });
+                toast.success("Artwork updated successfully");
+                setEditingArtworkId(null);
+                await refreshArtworks();
+              } catch (error: any) {
+                toast.error(error.message || "Failed to update artwork");
+              } finally {
+                setLoadingArtworkId(null);
+              }
+            } else {
+              handleSubmit(e);
             }
-          } else {
-            handleSubmit(e);
-          }
-        }}
-        className="space-y-4"
-      >
-        <div>
-          <label className={label}>Title</label>
-          <input
-            type="text"
-            value={newArtwork.title}
-            onChange={(e) =>
-              setNewArtwork({ ...newArtwork, title: e.target.value })
-            }
-            className={input}
-            required
-          />
-        </div>
-        <div>
-          <h4 className={h4}>Medium</h4>
-          <select
-            value={selectedMediums[0] || ""}
-            onChange={(e) => setSelectedMediums([e.target.value])}
-            className={select}
-            required
-          >
-            <option value="" disabled>
-              Select a medium
-            </option>
-            {mediums?.map((medium: Medium) => (
-              <option key={medium.id} value={medium.id}>
-                {medium.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
+          }}
+          className="space-y-4"
+        >
           <div>
-            <label className={label}>Height</label>
+            <label className={label}>Title</label>
             <input
-              type="number"
-              value={newArtwork.height}
+              type="text"
+              value={newArtwork.title}
               onChange={(e) =>
-                setNewArtwork({ ...newArtwork, height: e.target.valueAsNumber })
+                setNewArtwork({ ...newArtwork, title: e.target.value })
               }
               className={input}
               required
             />
           </div>
           <div>
-            <label className={label}>Width</label>
-            <input
-              type="number"
-              value={newArtwork.width}
-              onChange={(e) =>
-                setNewArtwork({ ...newArtwork, width: e.target.valueAsNumber })
-              }
-              className={input}
-              required
-            />
-          </div>
-          <div>
-            <label className={label}>Units</label>
+            <h4 className={h4}>Medium</h4>
             <select
-              value={selectedUnits}
-              onChange={(e) => setSelectedUnits(e.target.value)}
-              className={input}
+              value={selectedMediums[0] || ""}
+              onChange={(e) => setSelectedMediums([e.target.value])}
+              className={select}
+              required
             >
-              {MEASUREMENT_UNITS.map((unit) => (
-                <option key={unit.value} value={unit.value}>
-                  {unit.label}
+              <option value="" disabled>
+                Select a medium
+              </option>
+              {mediums?.map((medium: Medium) => (
+                <option key={medium.id} value={medium.id}>
+                  {medium.name}
                 </option>
               ))}
             </select>
           </div>
-        </div>
-        <div>
-          <label className={label}>Creation Date</label>
-          <input
-            type="date"
-            value={newArtwork.date}
-            onChange={(e) =>
-              setNewArtwork({ ...newArtwork, date: e.target.value })
-            }
-            className={input}
-            required
-            max={new Date().toISOString().split("T")[0]}
-          />
-        </div>
-        <div>
-          <label className={label}>Description</label>
-          <textarea
-            value={newArtwork.description}
-            onChange={(e) =>
-              setNewArtwork({ ...newArtwork, description: e.target.value })
-            }
-            className={textarea}
-            rows={3}
-            required
-          />
-        </div>
-        <div>
-          <label className={label}>Price (USD)</label>
-          <NumericFormat
-            value={newArtwork.price}
-            onValueChange={(values) => {
-              setNewArtwork({
-                ...newArtwork,
-                price: values.floatValue || 0,
-              });
-            }}
-            thousandSeparator=","
-            decimalSeparator="."
-            prefix="$"
-            decimalScale={2}
-            fixedDecimalScale
-            className={input}
-            placeholder="0.00"
-          />
-        </div>
-        {!isEditing && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={label}>Height</label>
+              <input
+                type="number"
+                value={newArtwork.height}
+                onChange={(e) =>
+                  setNewArtwork({
+                    ...newArtwork,
+                    height: e.target.valueAsNumber,
+                  })
+                }
+                className={input}
+                required
+              />
+            </div>
+            <div>
+              <label className={label}>Width</label>
+              <input
+                type="number"
+                value={newArtwork.width}
+                onChange={(e) =>
+                  setNewArtwork({
+                    ...newArtwork,
+                    width: e.target.valueAsNumber,
+                  })
+                }
+                className={input}
+                required
+              />
+            </div>
+            <div>
+              <label className={label}>Units</label>
+              <select
+                value={selectedUnits}
+                onChange={(e) => setSelectedUnits(e.target.value)}
+                className={input}
+              >
+                {MEASUREMENT_UNITS.map((unit) => (
+                  <option key={unit.value} value={unit.value}>
+                    {unit.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div>
-            <label className={label}>Images</label>
+            <label className={label}>Creation Date</label>
+            <input
+              type="date"
+              value={newArtwork.date}
+              onChange={(e) =>
+                setNewArtwork({ ...newArtwork, date: e.target.value })
+              }
+              className={input}
+              required
+              max={new Date().toISOString().split("T")[0]}
+            />
+          </div>
+          <div>
+            <label className={label}>Description</label>
+            <textarea
+              value={newArtwork.description}
+              onChange={(e) =>
+                setNewArtwork({ ...newArtwork, description: e.target.value })
+              }
+              className={textarea}
+              rows={3}
+              required
+            />
+          </div>
+          <div>
+            <label className={label}>Price (USD)</label>
+            <NumericFormat
+              value={newArtwork.price}
+              onValueChange={(values) => {
+                setNewArtwork({
+                  ...newArtwork,
+                  price: values.floatValue || 0,
+                });
+              }}
+              thousandSeparator=","
+              decimalSeparator="."
+              prefix="$"
+              decimalScale={2}
+              fixedDecimalScale
+              className={input}
+              placeholder="0.00"
+            />
+          </div>
+          {!isEditing && (
+            <div>
+              <label className={label}>Images</label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                <div className="space-y-1 text-center">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    stroke="currentColor"
+                    fill="none"
+                    viewBox="0 0 48 48"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <div className="flex text-sm text-gray-600">
+                    <label
+                      htmlFor="file-upload"
+                      className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+                    >
+                      <span>Upload files</span>
+                      <input
+                        id="file-upload"
+                        name="file-upload"
+                        type="file"
+                        className="sr-only"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                      />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    PNG, JPG, GIF up to 10MB
+                  </p>
+                </div>
+              </div>
+              {previewUrls.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 gap-4">
+                  {previewUrls.map((url, index) => (
+                    <div key={index} className="relative">
+                      <div className="bg-gray-100 rounded-lg p-2">
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="h-64 w-full object-contain rounded-lg"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddForm((prev) => !prev);
+                setNewArtwork({
+                  title: "",
+                  medium: "",
+                  uom: "",
+                  date: new Date().toISOString().split("T")[0],
+                  description: "",
+                  images: [],
+                  price: 0,
+                  height: 0,
+                  width: 0,
+                });
+                setSelectedFiles([]);
+                setPreviewUrls([]);
+                setSelectedMediums([]);
+                setSelectedUnits("in");
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaveDisabled(isEditing)}
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {isEditing ? "Updating..." : "Saving..."}
+                </span>
+              ) : isEditing ? (
+                "Update Artwork"
+              ) : (
+                "Save Artwork"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
+  const renderAddImagesForm = (artworkId: string) => {
+    const artwork = artworkList.find((a) => a.id === artworkId);
+    const isLoading = loadingArtworkId === artworkId;
+
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h3 className="text-lg font-semibold mb-4">Add Images</h3>
+        <div className="space-y-4">
+          {artwork && artwork.images && artwork.images.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm text-gray-700 mb-1">Current Image:</p>
+              <div className="bg-gray-100 rounded-lg p-2 relative">
+                {isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 rounded-lg">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                  </div>
+                )}
+                <img
+                  src={artwork.images[0]}
+                  alt={artwork.title}
+                  className="h-64 w-full object-contain rounded-lg"
+                />
+              </div>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Images
+            </label>
             <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
               <div className="space-y-1 text-center">
                 <svg
@@ -828,7 +976,6 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
                       name="file-upload"
                       type="file"
                       className="sr-only"
-                      multiple
                       accept="image/*"
                       onChange={handleFileChange}
                     />
@@ -841,14 +988,16 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
               </div>
             </div>
             {previewUrls.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className="mt-4 grid grid-cols-1 gap-4">
                 {previewUrls.map((url, index) => (
                   <div key={index} className="relative">
-                    <img
-                      src={url}
-                      alt={`Preview ${index + 1}`}
-                      className="h-32 w-full object-cover rounded-lg"
-                    />
+                    <div className="bg-gray-100 rounded-lg p-2">
+                      <img
+                        src={url}
+                        alt={`Preview ${index + 1}`}
+                        className="h-64 w-full object-contain rounded-lg"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(index)}
@@ -873,161 +1022,76 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
               </div>
             )}
           </div>
-        )}
-        <div className="flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={() => {
-              setShowAddForm(false);
-              setEditingArtworkId(null);
-              setNewArtwork({
-                title: "",
-                medium: "",
-                uom: "",
-                height: 0,
-                width: 0,
-                date: new Date().toISOString().split("T")[0],
-                description: "",
-                images: [],
-                price: 0,
-              });
-              setSelectedFiles([]);
-              setPreviewUrls([]);
-              setSelectedMediums([]);
-            }}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting || selectedMediums.length === 0}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-          >
-            {isSubmitting
-              ? "Saving..."
-              : isEditing
-              ? "Update Artwork"
-              : "Save Artwork"}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-
-  const renderAddImagesForm = (artworkId: string) => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold mb-4">Add Images</h3>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Images
-          </label>
-          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-            <div className="space-y-1 text-center">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                stroke="currentColor"
-                fill="none"
-                viewBox="0 0 48 48"
-                aria-hidden="true"
-              >
-                <path
-                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div className="flex text-sm text-gray-600">
-                <label
-                  htmlFor="file-upload"
-                  className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
-                >
-                  <span>Upload files</span>
-                  <input
-                    id="file-upload"
-                    name="file-upload"
-                    type="file"
-                    className="sr-only"
-                    multiple
-                    accept="image/*"
-                    onChange={handleFileChange}
-                  />
-                </label>
-                <p className="pl-1">or drag and drop</p>
-              </div>
-              <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-            </div>
+          <div className="flex justify-end mt-4">
+            <button
+              type="button"
+              onClick={() => handleAddImages(artworkId)}
+              disabled={isLoading || selectedFiles.length === 0}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
+                isLoading || selectedFiles.length === 0
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Updating...
+                </span>
+              ) : (
+                "Add Images"
+              )}
+            </button>
           </div>
-          {previewUrls.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              {previewUrls.map((url, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={url}
-                    alt={`Preview ${index + 1}`}
-                    className="h-32 w-full object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(index)}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={() => {
-              setAddingImagesToArtworkId(null);
-              setSelectedFiles([]);
-              setPreviewUrls([]);
-            }}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAddImages(artworkId)}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-          >
-            {isSubmitting ? "Adding..." : "Add Images"}
-          </button>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const toggleArtwork = (artworkId: string) => {
-    setExpandedArtworks((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(artworkId)) {
-        newSet.delete(artworkId);
-      } else {
-        newSet.add(artworkId);
+  const handleDeleteArtwork = async (artworkId: string) => {
+    try {
+      setLoadingArtworkId(artworkId);
+      await dispatch(deleteArtwork(artworkId)).unwrap();
+
+      // Update local state
+      setArtworkList((prevList) =>
+        prevList.filter((artwork) => artwork.id !== artworkId)
+      );
+
+      toast.success("Artwork deleted successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete artwork");
+    } finally {
+      setLoadingArtworkId(null);
+    }
+  };
+
+  const refreshArtworks = async () => {
+    if (profileState?.data?.id) {
+      try {
+        setLoadingArtworkId("refresh");
+        const artworks = await dispatch(
+          fetchArtistArtworks(profileState.data.id)
+        ).unwrap();
+        if (artworks) {
+          const formattedArtworks = artworks
+            .map((artwork) => ({
+              ...artwork,
+              date: artwork.date || new Date().toISOString().split("T")[0],
+            }))
+            .sort((a, b) => {
+              const dateA = new Date(a.updatedAt || a.date).getTime();
+              const dateB = new Date(b.updatedAt || b.date).getTime();
+              return dateB - dateA; // Sort in descending order (newest first)
+            });
+          setArtworkList(formattedArtworks);
+        }
+      } catch (error) {
+        console.error("Error refreshing artworks:", error);
+      } finally {
+        setLoadingArtworkId(null);
       }
-      return newSet;
-    });
+    }
   };
 
   return (
@@ -1035,7 +1099,24 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Your Artworks</h2>
         <button
-          onClick={() => setShowAddForm(true)}
+          onClick={() => {
+            setShowAddForm((prev) => !prev);
+            setNewArtwork({
+              title: "",
+              medium: "",
+              uom: "",
+              date: new Date().toISOString().split("T")[0],
+              description: "",
+              images: [],
+              price: 0,
+              height: 0,
+              width: 0,
+            });
+            setSelectedFiles([]);
+            setPreviewUrls([]);
+            setSelectedMediums([]);
+            setSelectedUnits("in");
+          }}
           className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
         >
           Add New Artwork
@@ -1046,22 +1127,31 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
 
       {artworkList.map((artwork) => (
         <div key={artwork.id} className="bg-white p-6 rounded-lg shadow-md">
-          <div
-            className="flex justify-between items-start mb-4 cursor-pointer"
-            onClick={() => toggleArtwork(artwork.id!)}
-          >
-            <div>
-              <h3 className="text-lg font-semibold">{artwork.title}</h3>
-              <p className="text-gray-600">{getMediumName(artwork.medium)}</p>
-              <p className="text-sm text-gray-500">
-                Created: {new Date(artwork.date).toLocaleDateString()}
-              </p>
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-start">
+              {artwork.images && artwork.images[0] && (
+                <img
+                  src={artwork.images[0]}
+                  alt={artwork.title}
+                  className="w-16 h-16 rounded-full object-cover mr-4 border border-gray-200 shadow-sm"
+                />
+              )}
+              <div>
+                <h3 className="text-lg font-semibold">{artwork.title}</h3>
+                <p className="text-gray-600">{getMediumName(artwork.medium)}</p>
+                <p className="text-sm text-gray-500">{artwork.description}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Created: {new Date(artwork.date).toLocaleDateString()}
+                </p>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setAddingImagesToArtworkId(artwork.id!);
+                  setAddingImagesToArtworkId((prev) =>
+                    prev === artwork.id ? null : artwork.id!
+                  );
                 }}
                 disabled={
                   artwork.showStatus === "shown" ||
@@ -1125,100 +1215,11 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
                   {artwork.showStatus}
                 </span>
               )}
-              <h6 className="text-sm text-gray-500">
-                {expandedArtworks.has(artwork.id!) ? "Hide" : "Show"}
-              </h6>
-              <svg
-                className={`w-5 h-5 transform transition-transform ${
-                  expandedArtworks.has(artwork.id!) ? "rotate-180" : ""
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
             </div>
           </div>
-
-          {expandedArtworks.has(artwork.id!) && (
-            <>
-              {addingImagesToArtworkId === artwork.id &&
-                renderAddImagesForm(artwork.id!)}
-
-              {editingArtworkId === artwork.id ? (
-                renderArtworkForm(artwork, true)
-              ) : (
-                <>
-                  <p className="text-gray-600 mb-2">{artwork.description}</p>
-                  <p className="text-gray-600 mb-2">
-                    {artwork.height} x {artwork.width} {artwork.uom}
-                  </p>
-                  <div className="grid grid-cols-2 gap-4 relative">
-                    {artwork.images?.map((image: string, index: number) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={image}
-                          alt={`${artwork.title} ${index + 1}`}
-                          className="h-48 w-full object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteImage(artwork.id!, image);
-                          }}
-                          disabled={
-                            artwork.showStatus === "shown" ||
-                            artwork.showStatus === "accepted"
-                          }
-                          className={`absolute top-2 right-2 ${
-                            artwork.showStatus === "shown" ||
-                            artwork.showStatus === "accepted"
-                              ? "bg-gray-400 cursor-not-allowed"
-                              : "bg-red-500 hover:bg-red-600"
-                          } text-white rounded-full p-1`}
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                    {artwork.showStatus && (
-                      <div className="absolute bottom-2 right-2">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            artwork.showStatus === "shown"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : artwork.showStatus === "accepted"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {artwork.showStatus}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </>
-          )}
+          {addingImagesToArtworkId === artwork.id &&
+            renderAddImagesForm(artwork.id!)}
+          {editingArtworkId === artwork.id && renderArtworkForm(artwork, true)}
         </div>
       ))}
 

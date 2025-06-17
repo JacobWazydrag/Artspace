@@ -3,6 +3,15 @@ import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import { fetchPublicArtshowData } from "../../features/publicSlice";
 import { motion, AnimatePresence } from "framer-motion";
 import { NumericFormat } from "react-number-format";
+import { User } from "../../features/usersSlice";
+
+interface Artist {
+  id: string;
+  name: string;
+  email: string;
+  bio: string;
+  photoUrl?: string;
+}
 
 interface ImageGalleryProps {
   images: string[];
@@ -128,14 +137,118 @@ const CollapsibleDescription = ({ text }: { text: string }) => {
   );
 };
 
+const ArtistGallery = ({
+  artworks,
+  isOpen,
+  onClose,
+  artistName,
+}: {
+  artworks: any[];
+  isOpen: boolean;
+  onClose: () => void;
+  artistName: string;
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const { data: mediums } = useAppSelector((state) => state.mediums);
+
+  const getMediumName = (mediumId: string) => {
+    const medium = mediums?.find((m) => m.id === mediumId);
+    return medium?.name || mediumId;
+  };
+
+  if (!isOpen) return null;
+
+  const handlePrevious = () => {
+    setCurrentIndex((prev) => (prev === 0 ? artworks.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev === artworks.length - 1 ? 0 : prev + 1));
+  };
+
+  const currentArtwork = artworks[currentIndex];
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="max-w-4xl w-full mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-white">
+            {artistName}'s Gallery
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-white text-2xl hover:text-gray-300"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="relative">
+          <img
+            src={currentArtwork.images[0]}
+            alt={currentArtwork.title}
+            className="w-full max-h-[70vh] object-contain rounded-lg"
+          />
+
+          <button
+            onClick={handlePrevious}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-gray-300"
+          >
+            ‹
+          </button>
+          <button
+            onClick={handleNext}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-gray-300"
+          >
+            ›
+          </button>
+        </div>
+
+        <div className="mt-4 text-white">
+          <h3 className="text-xl font-bold mb-2">{currentArtwork.title}</h3>
+          <p className="text-gray-300 mb-2">
+            {getMediumName(currentArtwork.medium)} • {currentArtwork.height} x{" "}
+            {currentArtwork.width} {currentArtwork.uom}
+          </p>
+          {currentArtwork.price && (
+            <p className="text-gray-300 mb-2">
+              <NumericFormat
+                value={currentArtwork.price}
+                thousandSeparator=","
+                decimalSeparator="."
+                prefix="$"
+                decimalScale={2}
+                fixedDecimalScale
+                displayType="text"
+              />
+            </p>
+          )}
+          <p className="text-gray-300">{currentArtwork.description}</p>
+        </div>
+
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
+          {currentIndex + 1} / {artworks.length}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PublicArtshow = () => {
   const dispatch = useAppDispatch();
   const { activeArtshow, publicArtists, publicArtworks, loading, error } =
     useAppSelector((state) => state.public);
   const { data: mediums } = useAppSelector((state) => state.mediums);
-  const [selectedArtwork, setSelectedArtwork] = useState<{
-    images: string[];
-    index: number;
+  const [selectedArtist, setSelectedArtist] = useState<{
+    id: string;
+    name: string;
+    artworks: any[];
   } | null>(null);
 
   useEffect(() => {
@@ -215,93 +328,59 @@ const PublicArtshow = () => {
           Featured Artists
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {publicArtists.map((artist) => (
-            <motion.div
-              key={artist.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="bg-white rounded-lg shadow-lg overflow-hidden"
-            >
-              <div className="p-6">
-                <div className="flex items-center mb-4">
-                  <img
-                    src={
-                      artist.photoUrl ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        artist.name
-                      )}`
-                    }
-                    alt={artist.name}
-                    className="w-16 h-16 rounded-full object-cover mr-4"
-                  />
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">
-                      {artist.name}
-                    </h3>
-                    <p className="text-gray-600">{artist.email}</p>
+          {publicArtists.map((artist: User) => {
+            const artistArtworks = publicArtworks.filter(
+              (artwork) => artwork.artistId === artist.id
+            );
+
+            return (
+              <motion.div
+                key={artist.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="bg-white rounded-lg shadow-lg overflow-hidden"
+              >
+                <div className="p-6">
+                  <div className="flex items-center mb-4">
+                    <img
+                      src={
+                        artist.photoUrl ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          artist.name || "Artist"
+                        )}`
+                      }
+                      alt={artist.name || "Artist"}
+                      className="w-16 h-16 rounded-full object-cover mr-4"
+                    />
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        {artist.name || "Artist"}
+                      </h3>
+                      <p className="text-gray-600">{artist.email}</p>
+                    </div>
                   </div>
+                  <p className="text-gray-700 mb-4">{artist.bio}</p>
+
+                  {artistArtworks.length > 0 && (
+                    <button
+                      onClick={() =>
+                        setSelectedArtist({
+                          id: artist.id || "",
+                          name: artist.name || "Artist",
+                          artworks: artistArtworks,
+                        })
+                      }
+                      className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors duration-200"
+                    >
+                      View {artistArtworks.length} Artwork
+                      {artistArtworks.length !== 1 ? "s" : ""}
+                    </button>
+                  )}
                 </div>
-                <p className="text-gray-700 mb-4">{artist.bio}</p>
-                <div className="space-y-4">
-                  {publicArtworks
-                    .filter((artwork) => artwork.artistId === artist.id)
-                    .map((artwork) => (
-                      <div key={artwork.id} className="border-t pt-4">
-                        <h4 className="font-semibold text-gray-900 mb-2">
-                          {artwork.title}
-                        </h4>
-                        {artwork.images && artwork.images.length > 0 && (
-                          <div
-                            className="relative cursor-pointer group"
-                            onClick={() =>
-                              setSelectedArtwork({
-                                images: artwork.images,
-                                index: 0,
-                              })
-                            }
-                          >
-                            <img
-                              src={artwork.images[0]}
-                              alt={artwork.title}
-                              className="w-full h-48 object-cover rounded-lg mb-2"
-                            />
-                            {artwork.images.length > 1 && (
-                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
-                                <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                  {artwork.images.length} images
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        <p className="text-sm text-gray-600 mb-2">
-                          {getMediumName(artwork.medium)} • {artwork.height} x{" "}
-                          {artwork.width} {artwork.uom}
-                        </p>
-                        {/* price */}
-                        <p className="text-sm text-gray-600 mb-2">
-                          {artwork.price ? (
-                            <NumericFormat
-                              value={artwork.price}
-                              thousandSeparator=","
-                              decimalSeparator="."
-                              prefix="$"
-                              decimalScale={2}
-                              fixedDecimalScale
-                              displayType="text"
-                            />
-                          ) : (
-                            "Price not available"
-                          )}
-                        </p>
-                        <CollapsibleDescription text={artwork.description} />
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       </div>
 
@@ -309,20 +388,20 @@ const PublicArtshow = () => {
       <footer className="bg-gray-900 text-white py-8">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4">ArtSpace Chicago</h2>
+            <h2 className="text-2xl font-bold mb-4">ArtSpace</h2>
             <p className="text-gray-400">
-              Celebrating local artists and their creative expressions
+              Thoughtfully curated emerging artists exhibitions
             </p>
           </div>
         </div>
       </footer>
 
-      {selectedArtwork && (
-        <ImageGallery
-          images={selectedArtwork.images}
+      {selectedArtist && (
+        <ArtistGallery
+          artworks={selectedArtist.artworks}
           isOpen={true}
-          onClose={() => setSelectedArtwork(null)}
-          initialIndex={selectedArtwork.index}
+          onClose={() => setSelectedArtist(null)}
+          artistName={selectedArtist.name}
         />
       )}
     </div>

@@ -31,7 +31,7 @@ const ArtistSidebar = () => {
         <img
           src={logo}
           alt="ArtSpace Chicago Logo"
-          className="h-10 w-10 object-contain"
+          className="h-16 w-16 rounded-full object-cover border-2 border-white shadow"
         />
         <h1 className="text-2xl font-bold">ArtSpace</h1>
       </div>
