@@ -48,15 +48,7 @@ const MyArtwork = () => {
 
         {artworks && artworks.length > 0 ? (
           <>
-            <div
-              className={`columns-${Math.min(
-                2,
-                Math.ceil(artworks.length / 2)
-              )} md:columns-${Math.min(
-                4,
-                Math.ceil(artworks.length / 2)
-              )} gap-4`}
-            >
+            <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
               {artworks.map((artwork) => (
                 <div key={artwork.id} className="break-inside-avoid mb-4">
                   <img
