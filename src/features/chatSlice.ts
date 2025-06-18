@@ -16,6 +16,7 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { PayloadAction } from "@reduxjs/toolkit";
 
 export interface Message {
   id?: string;
@@ -384,6 +385,43 @@ const chatSlice = createSlice({
     setMessages: (state, action) => {
       state.messages = action.payload;
     },
+    updateChat: (state, action: PayloadAction<Chat>) => {
+      const index = state.chats.findIndex(
+        (chat) => chat.id === action.payload.id
+      );
+      if (index !== -1) {
+        const existingChat = state.chats[index];
+        const updatedChat = {
+          ...action.payload,
+          lastMessage: action.payload.lastMessage
+            ? {
+                ...action.payload.lastMessage,
+                readBy:
+                  action.payload.lastMessage.readBy ||
+                  existingChat.lastMessage?.readBy ||
+                  [],
+                read:
+                  action.payload.lastMessage.readBy?.length ===
+                  action.payload.participants.length,
+              }
+            : existingChat.lastMessage,
+        };
+        state.chats[index] = updatedChat;
+
+        // If this is the current chat, update it as well
+        if (state.currentChat?.id === action.payload.id) {
+          state.currentChat = updatedChat;
+        }
+      }
+    },
+    updateMessage: (state, action: PayloadAction<Message>) => {
+      const messageIndex = state.messages.findIndex(
+        (m) => m.id === action.payload.id
+      );
+      if (messageIndex !== -1) {
+        state.messages[messageIndex] = action.payload;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -449,5 +487,7 @@ export const {
   markMessageAsRead,
   setChats,
   setMessages,
+  updateChat,
+  updateMessage,
 } = chatSlice.actions;
 export default chatSlice.reducer;

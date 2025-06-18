@@ -32,6 +32,23 @@ const ChatWindow = () => {
     };
   }, [dispatch, currentChat?.id, user?.id]);
 
+  // Add new effect to handle real-time message updates
+  useEffect(() => {
+    if (currentChat?.id && user?.id && messages.length > 0) {
+      // Check if there are any unread messages
+      const hasUnreadMessages = messages.some(
+        (message) =>
+          message.receiverId === user.id && !message.readBy?.includes(user.id)
+      );
+
+      if (hasUnreadMessages) {
+        dispatch(
+          markMessagesAsRead({ chatId: currentChat.id, userId: user.id })
+        );
+      }
+    }
+  }, [messages, currentChat?.id, user?.id, dispatch]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -98,7 +115,7 @@ const ChatWindow = () => {
             No messages yet
           </div>
         ) : (
-          messages.map((message) => (
+          messages.map((message, index) => (
             <div
               key={message.id}
               className={`flex ${
@@ -121,6 +138,13 @@ const ChatWindow = () => {
                   }`}
                 >
                   {format(new Date(message.createdAt), "h:mm a")}
+                  {message.senderId === user?.id &&
+                    index === messages.length - 1 && (
+                      <>
+                        <br />
+                        {message.read ? "read" : "unread"}
+                      </>
+                    )}
                 </div>
               </div>
             </div>

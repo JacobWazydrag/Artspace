@@ -121,6 +121,22 @@ const ChatList: React.FC = () => {
     return otherUser?.photoUrl;
   };
 
+  const getReadStatus = (chat: Chat) => {
+    if (!chat.lastMessage) return null;
+    const readBy = chat.lastMessage.readBy || [];
+    const totalParticipants = chat.participants.length;
+    const readCount = readBy.length;
+
+    // Check if the current user has read the message
+    const isReadByMe = currentUser?.id
+      ? readBy.includes(currentUser.id)
+      : false;
+
+    if (!isReadByMe) return "Unread by you";
+    if (readCount === totalParticipants) return "Read by all";
+    return `Read by ${readCount}/${totalParticipants}`;
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b">
@@ -179,48 +195,67 @@ const ChatList: React.FC = () => {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
-          {chats.map((chat) => (
-            <button
-              key={chat.id}
-              onClick={() => dispatch(setCurrentChat(chat))}
-              className={`w-full p-4 border-b hover:bg-gray-50 transition-colors ${
-                currentChat?.id === chat.id ? "bg-blue-50" : ""
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                  {getOtherParticipantPhoto(chat) ? (
-                    <img
-                      src={getOtherParticipantPhoto(chat) || ""}
-                      alt={getOtherParticipantName(chat)}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-gray-600 font-medium">
-                      {getOtherParticipantName(chat).charAt(0)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-gray-900 truncate">
-                      {getOtherParticipantName(chat)}
-                    </h3>
-                    {chat.lastMessage && (
-                      <span className="text-sm text-gray-500">
-                        {format(new Date(chat.updatedAt), "MMM d")}
-                      </span>
+          {chats.map((chat) => {
+            const isUnreadByMe =
+              chat.lastMessage &&
+              currentUser?.id &&
+              !chat.lastMessage.readBy?.includes(currentUser.id);
+
+            return (
+              <button
+                key={chat.id}
+                onClick={() => dispatch(setCurrentChat(chat))}
+                className={`w-full p-4 border-b hover:bg-gray-50 transition-colors ${
+                  currentChat?.id === chat.id ? "bg-blue-50" : ""
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                      {getOtherParticipantPhoto(chat) ? (
+                        <img
+                          src={getOtherParticipantPhoto(chat) || ""}
+                          alt={getOtherParticipantName(chat)}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-gray-600 font-medium">
+                          {getOtherParticipantName(chat).charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    {isUnreadByMe && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 truncate">
-                    {chat.lastMessage
-                      ? chat.lastMessage.content
-                      : "No messages yet"}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-gray-900 truncate">
+                        {getOtherParticipantName(chat)}
+                      </h3>
+                      {chat.lastMessage && (
+                        <span className="text-sm text-gray-500">
+                          {format(new Date(chat.updatedAt), "MMM d")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-gray-500 truncate">
+                        {chat.lastMessage
+                          ? chat.lastMessage.content
+                          : "No messages yet"}
+                      </p>
+                      {chat.lastMessage && (
+                        <span className="text-xs text-gray-400 ml-2">
+                          {getReadStatus(chat)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
 
