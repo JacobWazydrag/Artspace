@@ -21,7 +21,7 @@ export interface User {
   name: string;
   email: string;
   bio: string;
-  role: "manager" | "on-boarding" | "artist";
+  role: "manager" | "on-boarding" | "artist" | "admin";
   status: "accepted" | "rejected" | "shown" | "showing" | null;
   contactInfo?: {
     phone?: string;
@@ -62,19 +62,6 @@ export const fetchUsers = createAsyncThunk("users/fetchUsers", async () => {
   })) as User[];
   return users;
 });
-export const fetchUsersForChat = createAsyncThunk(
-  "users/fetchUsersForChat",
-  async (userId: string) => {
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("role", "==", "admin"));
-    const querySnapshot = await getDocs(q);
-    const users = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as User[];
-    return users;
-  }
-);
 
 export const fetchUserById = createAsyncThunk(
   "users/fetchUserById",
@@ -123,6 +110,43 @@ export const deleteUser = createAsyncThunk(
   }
 );
 
+// Helper function to convert Firestore timestamps to ISO strings
+const convertTimestamp = (timestamp: any): string => {
+  if (timestamp instanceof Timestamp) {
+    return timestamp.toDate().toISOString();
+  }
+  if (typeof timestamp === "string") {
+    return timestamp;
+  }
+  return new Date().toISOString();
+};
+
+// Helper function to convert user data
+const convertUserData = (doc: any): User => {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    ...data,
+    createdAt: convertTimestamp(data.createdAt),
+    updatedAt: convertTimestamp(data.updatedAt),
+  };
+};
+
+export const fetchUsersForChat = createAsyncThunk(
+  "users/fetchUsersForChat",
+  async () => {
+    try {
+      const usersRef = collection(db, "users");
+      const querySnapshot = await getDocs(usersRef);
+      const users = querySnapshot.docs.map(convertUserData);
+      return users;
+    } catch (error) {
+      console.error("Error fetching users for chat:", error);
+      throw error;
+    }
+  }
+);
+
 const usersSlice = createSlice({
   name: "users",
   initialState,
@@ -152,7 +176,7 @@ const usersSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || "Failed to fetch users";
       })
-      // Fetch Users for Chat
+      // Fetch Users For Chat
       .addCase(fetchUsersForChat.pending, (state) => {
         state.loading = true;
         state.error = null;

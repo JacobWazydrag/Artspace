@@ -15,6 +15,7 @@ import {
   UsersIcon,
   ArrowRightOnRectangleIcon,
   PaintBrushIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 
 const Sidebar = () => {
@@ -118,6 +119,19 @@ const Sidebar = () => {
               <span className="flex items-center gap-3">
                 <PaintBrushIcon className="w-5 h-5" />
                 Artworks
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/chat"
+              className={`block px-4 py-2 rounded ${
+                isActive("/chat") ? "bg-gray-900" : "hover:bg-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                Messages
               </span>
             </Link>
           </li>

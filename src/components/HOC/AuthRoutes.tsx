@@ -71,7 +71,7 @@ const AuthRoutes = () => {
             <button
               onClick={() => {
                 hasAttemptedFetch.current = false;
-                dispatch(fetchUserProfile(user.id));
+                dispatch(fetchUserProfile(user.id!));
               }}
               className="w-full bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 transition-colors"
             >

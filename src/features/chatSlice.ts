@@ -1,189 +1,143 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { db } from "../firebase";
 import {
   collection,
-  addDoc,
   getDocs,
+  doc,
+  getDoc,
+  addDoc,
+  updateDoc,
+  Timestamp,
   query,
   where,
   orderBy,
-  doc,
-  updateDoc,
-  setDoc,
-  Timestamp,
-  getDoc,
-  serverTimestamp,
   onSnapshot,
-  limit,
+  serverTimestamp,
 } from "firebase/firestore";
-import toast from "react-hot-toast";
+import { db } from "../firebase";
 
 export interface Message {
-  id: string;
+  id?: string;
   senderId: string;
-  text: string;
-  timestamp: Timestamp;
-  readBy: string[];
+  receiverId: string;
+  content: string;
+  createdAt: string;
+  read: boolean;
 }
 
-export interface Conversation {
-  id: string;
+export interface Chat {
+  id?: string;
   participants: string[];
-  roles: string[];
-  lastMessage?: string;
-  lastMessageId?: string;
-  lastMessageReadBy?: string[];
-  lastUpdated: Timestamp;
-  createdAt: Timestamp;
-  initiatedBy: string;
+  lastMessage?: Message;
+  updatedAt: string;
 }
 
 interface ChatState {
-  conversations: Conversation[];
-  currentConversation: Conversation | null;
+  chats: Chat[];
+  currentChat: Chat | null;
   messages: Message[];
   loading: boolean;
+  sendingMessage: boolean;
   error: string | null;
 }
 
 const initialState: ChatState = {
-  conversations: [],
-  currentConversation: null,
+  chats: [],
+  currentChat: null,
   messages: [],
   loading: false,
+  sendingMessage: false,
   error: null,
 };
 
-// Helper function to generate conversation ID
-const generateConversationId = (uid1: string, uid2: string) => {
-  return `conversation_${[uid1, uid2].sort().join("_")}`;
+// Helper function to convert Firestore timestamps to ISO strings
+const convertTimestamp = (timestamp: any): string => {
+  if (timestamp instanceof Timestamp) {
+    return timestamp.toDate().toISOString();
+  }
+  if (typeof timestamp === "string") {
+    return timestamp;
+  }
+  return new Date().toISOString();
+};
+
+// Helper function to convert chat data
+const convertChatData = (doc: any): Chat => {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    ...data,
+    updatedAt: convertTimestamp(data.updatedAt),
+    lastMessage: data.lastMessage
+      ? {
+          ...data.lastMessage,
+          createdAt: convertTimestamp(data.lastMessage.createdAt),
+        }
+      : undefined,
+  };
 };
 
 // Async thunks
-export const fetchConversations = createAsyncThunk(
-  "chat/fetchConversations",
-  async (userId: string, { dispatch, getState }) => {
+export const fetchUserChats = createAsyncThunk(
+  "chat/fetchUserChats",
+  async (userId: string, { dispatch }) => {
     try {
+      const chatsRef = collection(db, "chats");
       const q = query(
-        collection(db, "conversations"),
+        chatsRef,
         where("participants", "array-contains", userId),
-        orderBy("lastUpdated", "desc")
+        orderBy("updatedAt", "desc")
       );
 
-      // Set up real-time listener for conversations
-      const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-        const conversations = (await Promise.all(
-          querySnapshot.docs.map(async (doc) => {
-            const data = doc.data();
-
-            // Get the latest message for each conversation
-            const messagesQuery = query(
-              collection(db, `conversations/${doc.id}/messages`),
-              orderBy("timestamp", "desc"),
-              limit(1)
-            );
-            const messagesSnapshot = await getDocs(messagesQuery);
-            const lastMessageDoc = messagesSnapshot.docs[0];
-            const lastMessage = lastMessageDoc?.data();
-
-            return {
-              id: doc.id,
-              ...data,
-              lastMessageId: lastMessageDoc?.id,
-              lastMessage: lastMessage?.text,
-              lastMessageReadBy: lastMessage?.readBy || [],
-              createdAt: data.createdAt?.toDate
-                ? data.createdAt.toDate().toISOString()
-                : null,
-              lastUpdated: data.lastUpdated?.toDate
-                ? data.lastUpdated.toDate().toISOString()
-                : null,
-            };
-          })
-        )) as Conversation[];
-
-        // Notification toast for new unread messages in conversations not currently viewed
-        const chatState = (getState() as { chat: ChatState }).chat;
-        const prevConversations = chatState.conversations || [];
-        const currentConversationId = chatState.currentConversation?.id;
-        conversations.forEach((conv: Conversation) => {
-          const prev = prevConversations.find(
-            (c: Conversation) => c.id === conv.id
-          );
-          // If there's a new lastMessageId and the user hasn't read it
-          if (
-            prev &&
-            conv.lastMessageId &&
-            conv.lastMessageId !== prev.lastMessageId &&
-            conv.lastMessageReadBy &&
-            !conv.lastMessageReadBy.includes(userId) &&
-            conv.lastMessage &&
-            conv.id !== currentConversationId
-          ) {
-            toast.success(`New message: ${conv.lastMessage}`);
-          }
+      // Set up real-time listener for chats
+      return new Promise<Chat[]>((resolve) => {
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const chats = querySnapshot.docs.map(convertChatData);
+          dispatch(setChats(chats));
+          resolve(chats);
         });
 
-        dispatch(chatSlice.actions.setConversations(conversations));
+        // Store unsubscribe function in window for cleanup
+        (window as any).unsubscribeChats = unsubscribe;
       });
-
-      // Do NOT return unsubscribe!
-      // return unsubscribe;
-      return null;
     } catch (error) {
-      console.error("Error setting up conversations listener:", error);
+      console.error("Error fetching user chats:", error);
       throw error;
     }
   }
 );
 
-export const startConversation = createAsyncThunk(
-  "chat/startConversation",
-  async ({
-    currentUserId,
-    otherUserId,
-    initialMessage,
-    initialSenderId,
-  }: {
-    currentUserId: string;
-    otherUserId: string;
-    initialMessage: string;
-    initialSenderId?: string;
-  }) => {
+export const fetchChatMessages = createAsyncThunk(
+  "chat/fetchChatMessages",
+  async (chatId: string, { dispatch }) => {
     try {
-      const conversationId = generateConversationId(currentUserId, otherUserId);
-      const conversationRef = doc(db, "conversations", conversationId);
-      const conversationDoc = await getDoc(conversationRef);
-
-      if (!conversationDoc.exists()) {
-        // Create new conversation
-        const conversationData = {
-          participants: [currentUserId, otherUserId],
-          roles: ["artist", "user", "on-boarding"], // You might want to make this dynamic based on user roles
-          lastMessage: initialMessage,
-          lastUpdated: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          initiatedBy: currentUserId,
-        };
-        await setDoc(conversationRef, conversationData);
-      }
-
-      // Add initial message
-      const messageData = {
-        senderId: initialSenderId || currentUserId,
-        text: initialMessage,
-        timestamp: serverTimestamp(),
-        readBy: [currentUserId],
-      };
-
-      await addDoc(
-        collection(db, `conversations/${conversationId}/messages`),
-        messageData
+      const messagesRef = collection(db, "messages");
+      const q = query(
+        messagesRef,
+        where("chatId", "==", chatId),
+        orderBy("createdAt", "asc")
       );
 
-      return conversationId;
+      // Set up real-time listener for messages
+      return new Promise<Message[]>((resolve) => {
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const messages = querySnapshot.docs.map((doc) => {
+            const data = doc.data();
+            const { createdAt, ...messageData } = data;
+            return {
+              id: doc.id,
+              ...messageData,
+              createdAt: convertTimestamp(createdAt),
+            } as Message;
+          });
+          dispatch(setMessages(messages));
+          resolve(messages);
+        });
+
+        // Store unsubscribe function in window for cleanup
+        (window as any).unsubscribeMessages = unsubscribe;
+      });
     } catch (error) {
-      console.error("Error starting conversation:", error);
+      console.error("Error fetching chat messages:", error);
       throw error;
     }
   }
@@ -191,51 +145,40 @@ export const startConversation = createAsyncThunk(
 
 export const sendMessage = createAsyncThunk(
   "chat/sendMessage",
-  async (
-    {
-      conversationId,
-      senderId,
-      text,
-    }: {
-      conversationId: string;
-      senderId: string;
-      text: string;
-    },
-    { dispatch }
-  ) => {
+  async ({
+    chatId,
+    message,
+  }: {
+    chatId: string;
+    message: Omit<Message, "id" | "createdAt">;
+  }) => {
     try {
-      const messageData = {
-        senderId,
-        text,
-        timestamp: serverTimestamp(),
-        readBy: [senderId],
+      const messagesRef = collection(db, "messages");
+      const chatRef = doc(db, "chats", chatId);
+
+      const newMessage = {
+        ...message,
+        chatId,
+        createdAt: serverTimestamp(),
+        read: false,
       };
 
-      const messageRef = await addDoc(
-        collection(db, `conversations/${conversationId}/messages`),
-        messageData
-      );
+      const messageDoc = await addDoc(messagesRef, newMessage);
 
-      // Update conversation's last message and timestamp
-      const lastUpdated = new Date().toISOString();
-      await updateDoc(doc(db, "conversations", conversationId), {
-        lastMessage: text,
-        lastUpdated: serverTimestamp(),
-        lastMessageReadBy: [senderId],
+      // Update chat's lastMessage and updatedAt
+      await updateDoc(chatRef, {
+        lastMessage: {
+          ...newMessage,
+          id: messageDoc.id,
+        },
+        updatedAt: serverTimestamp(),
       });
 
-      // Optimistically update conversation in Redux
-      dispatch(
-        chatSlice.actions.optimisticallyUpdateConversation({
-          conversationId,
-          lastMessage: text,
-          lastUpdated,
-          lastMessageReadBy: [senderId],
-        })
-      );
-
-      // Do not return the message for Redux state.messages
-      return null;
+      return {
+        id: messageDoc.id,
+        ...newMessage,
+        createdAt: new Date().toISOString(),
+      } as Message;
     } catch (error) {
       console.error("Error sending message:", error);
       throw error;
@@ -243,109 +186,81 @@ export const sendMessage = createAsyncThunk(
   }
 );
 
-export const markMessageAsRead = createAsyncThunk(
-  "chat/markMessageAsRead",
-  async (
-    {
-      conversationId,
-      messageId,
-      userId,
-    }: {
-      conversationId: string;
-      messageId: string;
-      userId: string;
-    },
-    { dispatch }
-  ) => {
+export const createChat = createAsyncThunk(
+  "chat/createChat",
+  async ({ participants }: { participants: string[] }) => {
     try {
-      const messageRef = doc(
-        db,
-        `conversations/${conversationId}/messages/${messageId}`
-      );
-      const messageDoc = await getDoc(messageRef);
-
-      if (messageDoc.exists()) {
-        const messageData = messageDoc.data();
-        const readBy = messageData.readBy || [];
-        if (!readBy.includes(userId)) {
-          await updateDoc(messageRef, {
-            readBy: [...readBy, userId],
-          });
-
-          // Update the message in Redux store
-          dispatch(
-            chatSlice.actions.updateMessageReadStatus({
-              messageId,
-              userId,
-            })
-          );
-
-          // Check if this is the latest message in the conversation
-          const messagesQuery = query(
-            collection(db, `conversations/${conversationId}/messages`),
-            orderBy("timestamp", "desc"),
-            limit(1)
-          );
-          const messagesSnapshot = await getDocs(messagesQuery);
-          const latestMessageDoc = messagesSnapshot.docs[0];
-          if (latestMessageDoc && latestMessageDoc.id === messageId) {
-            // Update the conversation's lastMessageReadBy field
-            const updatedReadBy = !readBy.includes(userId)
-              ? [...readBy, userId]
-              : readBy;
-            await updateDoc(doc(db, "conversations", conversationId), {
-              lastMessageReadBy: updatedReadBy,
-            });
-
-            // Update the conversation in Redux store
-            dispatch(
-              chatSlice.actions.updateConversationReadStatus({
-                conversationId,
-                userId,
-              })
-            );
-          }
-        }
-      }
+      const chatsRef = collection(db, "chats");
+      const newChat = {
+        participants,
+        updatedAt: serverTimestamp(),
+      };
+      const chatDoc = await addDoc(chatsRef, newChat);
+      return {
+        id: chatDoc.id,
+        ...newChat,
+        updatedAt: new Date().toISOString(),
+      } as Chat;
     } catch (error) {
-      console.error("Error marking message as read:", error);
+      console.error("Error creating chat:", error);
       throw error;
     }
   }
 );
 
-export const fetchMessages = createAsyncThunk(
-  "chat/fetchMessages",
-  async (conversationId: string, { dispatch }) => {
+export const startChat = createAsyncThunk(
+  "chat/startChat",
+  async ({ userId, otherUserId }: { userId: string; otherUserId: string }) => {
     try {
+      // Check if a chat already exists between these users
+      const chatsRef = collection(db, "chats");
       const q = query(
-        collection(db, `conversations/${conversationId}/messages`),
-        orderBy("timestamp", "asc")
+        chatsRef,
+        where("participants", "array-contains", userId)
       );
+      const querySnapshot = await getDocs(q);
 
-      // Set up real-time listener for messages
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const messages = querySnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            senderId: data.senderId || "",
-            text: data.text || "",
-            timestamp: data.timestamp?.toDate
-              ? data.timestamp.toDate().toISOString()
-              : null,
-            readBy: data.readBy || [],
-          };
-        });
-
-        dispatch(chatSlice.actions.setMessages(messages));
+      // Look for an existing chat with both users
+      const existingChat = querySnapshot.docs.find((doc) => {
+        const data = doc.data();
+        return data.participants.includes(otherUserId);
       });
 
-      // Do NOT return unsubscribe!
-      // return unsubscribe;
-      return null;
+      if (existingChat) {
+        // Return the existing chat instead of creating a new one
+        const data = existingChat.data();
+        return {
+          id: existingChat.id,
+          participants: data.participants,
+          lastMessage: data.lastMessage,
+          createdAt: convertTimestamp(data.createdAt),
+          updatedAt: convertTimestamp(data.updatedAt),
+        } as Chat;
+      }
+
+      // If no existing chat, create a new one
+      const chatRef = await addDoc(collection(db, "chats"), {
+        participants: [userId, otherUserId],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastMessage: null,
+      });
+
+      const chatDoc = await getDoc(chatRef);
+      if (!chatDoc.exists()) {
+        throw new Error("Failed to create chat");
+      }
+
+      const data = chatDoc.data();
+      return {
+        id: chatDoc.id,
+        participants: data.participants,
+        lastMessage: data.lastMessage,
+        createdAt: convertTimestamp(data.createdAt),
+        updatedAt: convertTimestamp(data.updatedAt),
+      } as Chat;
     } catch (error) {
-      console.error("Error setting up messages listener:", error);
+      console.error("Error starting chat:", error);
       throw error;
     }
   }
@@ -355,100 +270,89 @@ const chatSlice = createSlice({
   name: "chat",
   initialState,
   reducers: {
-    setCurrentConversation: (state, action) => {
-      state.currentConversation = action.payload;
+    setCurrentChat: (state, action) => {
+      state.currentChat = action.payload;
     },
-    clearCurrentConversation: (state) => {
-      state.currentConversation = null;
+    clearChat: (state) => {
+      state.currentChat = null;
       state.messages = [];
     },
-    setConversations: (state, action) => {
-      state.conversations = action.payload;
+    markMessageAsRead: (state, action) => {
+      const message = state.messages.find((m) => m.id === action.payload);
+      if (message) {
+        message.read = true;
+      }
+    },
+    setChats: (state, action) => {
+      state.chats = action.payload;
     },
     setMessages: (state, action) => {
       state.messages = action.payload;
     },
-    optimisticallyUpdateConversation: (state, action) => {
-      const { conversationId, lastMessage, lastUpdated, lastMessageReadBy } =
-        action.payload;
-      const conv = state.conversations.find((c) => c.id === conversationId);
-      if (conv) {
-        conv.lastMessage = lastMessage;
-        conv.lastUpdated = lastUpdated;
-        if (lastMessageReadBy) conv.lastMessageReadBy = lastMessageReadBy;
-      }
-    },
-    updateMessageReadStatus: (state, action) => {
-      const { messageId, userId } = action.payload;
-      const message = state.messages.find((m) => m.id === messageId);
-      if (message && !message.readBy.includes(userId)) {
-        message.readBy.push(userId);
-      }
-    },
-    updateConversationReadStatus: (state, action) => {
-      const { conversationId, userId } = action.payload;
-      const conversation = state.conversations.find(
-        (c) => c.id === conversationId
-      );
-      if (conversation && conversation.lastMessageReadBy) {
-        if (!conversation.lastMessageReadBy.includes(userId)) {
-          conversation.lastMessageReadBy.push(userId);
-        }
-      }
-    },
   },
   extraReducers: (builder) => {
     builder
-      // Fetch Conversations
-      .addCase(fetchConversations.pending, (state) => {
+      // Fetch User Chats
+      .addCase(fetchUserChats.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchConversations.fulfilled, (state) => {
+      .addCase(fetchUserChats.fulfilled, (state) => {
         state.loading = false;
+        state.error = null;
       })
-      .addCase(fetchConversations.rejected, (state, action) => {
+      .addCase(fetchUserChats.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || "Failed to fetch conversations";
+        state.error = action.error.message || "Failed to fetch chats";
       })
-      // Start Conversation
-      .addCase(startConversation.pending, (state) => {
+      // Fetch Chat Messages
+      .addCase(fetchChatMessages.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(startConversation.fulfilled, (state) => {
+      .addCase(fetchChatMessages.fulfilled, (state) => {
         state.loading = false;
+        state.error = null;
       })
-      .addCase(startConversation.rejected, (state, action) => {
+      .addCase(fetchChatMessages.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || "Failed to start conversation";
+        state.error = action.error.message || "Failed to fetch messages";
       })
       // Send Message
       .addCase(sendMessage.pending, (state) => {
-        state.loading = true;
+        state.sendingMessage = true;
         state.error = null;
       })
       .addCase(sendMessage.fulfilled, (state) => {
-        state.loading = false;
-        // Do not push the message to state.messages here
+        state.sendingMessage = false;
+        state.error = null;
       })
       .addCase(sendMessage.rejected, (state, action) => {
-        state.loading = false;
+        state.sendingMessage = false;
         state.error = action.error.message || "Failed to send message";
       })
-      .addCase(fetchMessages.fulfilled, (state) => {
+      // Create Chat
+      .addCase(createChat.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createChat.fulfilled, (state, action) => {
         state.loading = false;
+        state.chats.unshift(action.payload);
+        state.error = null;
+      })
+      .addCase(createChat.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to create chat";
       });
   },
 });
 
 export const {
-  setCurrentConversation,
-  clearCurrentConversation,
-  setConversations,
+  setCurrentChat,
+  clearChat,
+  markMessageAsRead,
+  setChats,
   setMessages,
-  optimisticallyUpdateConversation,
-  updateMessageReadStatus,
-  updateConversationReadStatus,
 } = chatSlice.actions;
 export default chatSlice.reducer;

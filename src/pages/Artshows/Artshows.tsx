@@ -240,7 +240,7 @@ const Artshows = () => {
         const artshowData = {
           ...formData,
           photoUrl,
-          createdAt: editingArtshow.createdAt,
+          createdAt: Timestamp.fromDate(new Date(editingArtshow.createdAt)),
         };
         await updateDoc(doc(db, "artshows", editingArtshow.id), artshowData);
       } else {

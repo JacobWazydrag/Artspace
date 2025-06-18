@@ -6,8 +6,8 @@ import artshowsReducer from "../features/artshowsSlice";
 import mediumsReducer from "../features/mediumsSlice";
 import usersReducer from "../features/usersSlice";
 import artworkReducer from "../features/artworkSlice";
-import chatReducer from "../features/chatSlice";
 import publicReducer from "../features/publicSlice";
+import chatReducer from "../features/chatSlice";
 
 export const store = configureStore({
   reducer: {
@@ -18,8 +18,8 @@ export const store = configureStore({
     mediums: mediumsReducer,
     users: usersReducer,
     artwork: artworkReducer,
-    chat: chatReducer,
     public: publicReducer,
+    chat: chatReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -27,13 +27,13 @@ export const store = configureStore({
         // Ignore these action types
         ignoredActions: [
           "mediums/fetchMediums/fulfilled",
-          "chat/fetchConversations/fulfilled",
-          "chat/sendMessage/fulfilled",
           "profile/fetchUserProfile/fulfilled",
           "artshows/fetchArtshows/fulfilled",
           "locations/fetchLocations/fulfilled",
           "users/fetchUsers/fulfilled",
           "artwork/fetchArtwork/fulfilled",
+          "chat/sendMessage/fulfilled",
+          "chat/createChat/fulfilled",
         ],
         // Ignore these field paths in all actions
         ignoredActionPaths: [
@@ -51,9 +51,6 @@ export const store = configureStore({
         ignoredPaths: [
           "mediums.data.createdAt",
           "mediums.data.0.createdAt",
-          "chat.messages.timestamp",
-          "chat.conversations.lastUpdated",
-          "chat.conversations.createdAt",
           "artshows.data.createdAt",
           "artshows.data.0.createdAt",
           "locations.data.createdAt",
@@ -64,6 +61,8 @@ export const store = configureStore({
           "artwork.data.0.createdAt",
           "profile.data.createdAt",
           "profile.data.0.createdAt",
+          "chat.messages.createdAt",
+          "chat.chats.updatedAt",
         ],
       },
       immutableCheck: false, // Disable immutable checks in development

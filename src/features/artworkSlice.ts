@@ -133,6 +133,18 @@ export const fetchArtistArtworks = createAsyncThunk(
         return {
           id: doc.id,
           ...data,
+          createdAt:
+            data.createdAt instanceof Timestamp
+              ? data.createdAt.toDate().toISOString()
+              : typeof data.createdAt === "string"
+              ? data.createdAt
+              : new Date().toISOString(),
+          updatedAt:
+            data.updatedAt instanceof Timestamp
+              ? data.updatedAt.toDate().toISOString()
+              : typeof data.updatedAt === "string"
+              ? data.updatedAt
+              : new Date().toISOString(),
         };
       }) as Artwork[];
       return artworks;
@@ -334,6 +346,18 @@ export const fetchArtshowArtworks = createAsyncThunk(
         return {
           id: doc.id,
           ...data,
+          createdAt:
+            data.createdAt instanceof Timestamp
+              ? data.createdAt.toDate().toISOString()
+              : typeof data.createdAt === "string"
+              ? data.createdAt
+              : new Date().toISOString(),
+          updatedAt:
+            data.updatedAt instanceof Timestamp
+              ? data.updatedAt.toDate().toISOString()
+              : typeof data.updatedAt === "string"
+              ? data.updatedAt
+              : new Date().toISOString(),
         };
       }) as Artwork[];
       return artworks;
@@ -456,10 +480,25 @@ export const fetchAllArtworks = createAsyncThunk(
       const artworksRef = collection(db, "artworks");
       const q = query(artworksRef, orderBy("createdAt", "desc"));
       const querySnapshot = await getDocs(q);
-      const artworks = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Artwork[];
+      const artworks = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt:
+            data.createdAt instanceof Timestamp
+              ? data.createdAt.toDate().toISOString()
+              : typeof data.createdAt === "string"
+              ? data.createdAt
+              : new Date().toISOString(),
+          updatedAt:
+            data.updatedAt instanceof Timestamp
+              ? data.updatedAt.toDate().toISOString()
+              : typeof data.updatedAt === "string"
+              ? data.updatedAt
+              : new Date().toISOString(),
+        };
+      }) as Artwork[];
       return artworks;
     } catch (error) {
       console.error("Error fetching all artworks:", error);

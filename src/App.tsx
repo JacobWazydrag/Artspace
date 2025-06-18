@@ -19,7 +19,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Auth from "./pages/Auth/Auth";
 import Users from "./pages/Users/Users";
 import UserArtworks from "./pages/UserArtworks/UserArtworks";
-import ChatDrawer from "./components/ChatDrawer";
 import OnboardingLayout from "./components/Layouts/OnboardingLayout";
 import { fetchLocations } from "./features/locationsSlice";
 import { fetchArtshows } from "./features/artshowsSlice";
@@ -30,6 +29,9 @@ import ArtshowArtworks from "./pages/Artshows/ArtshowArtworks";
 import ArtshowArtists from "./pages/Artshows/ArtshowArtists";
 import OnboardArt from "./pages/Artist/OnboardArt";
 import Store from "./pages/Store/Store";
+import ChatPage from "./pages/ChatPage";
+import { getDoc, doc } from "firebase/firestore";
+import { db } from "./firebase";
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -40,25 +42,45 @@ const App = () => {
   } = useAppSelector((state) => state.profile);
   const { user } = useAppSelector((state) => state.auth);
   const location = useLocation();
-  const hideChatDrawer =
-    location.pathname.startsWith("/artshow/") &&
-    !location.pathname.startsWith("/artshow/artworks");
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user && user.email) {
-        // Dispatch auth login
-        dispatch(
-          login({
-            email: user.email,
-            id: user.uid,
-            photoURL: user?.photoURL || null,
-          })
-        );
-        // Fetch mediums data
-        dispatch(fetchMediums());
-        dispatch(fetchLocations());
-        dispatch(fetchArtshows());
+        try {
+          // Fetch user data from Firestore first
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          const userData = userDoc.data();
+
+          // Dispatch auth login with the correct role from Firestore
+          dispatch(
+            login({
+              email: user.email,
+              id: user.uid,
+              photoUrl: user.photoURL || null,
+              name: user.displayName || "",
+              bio: userData?.bio || "",
+              role: userData?.role || "on-boarding",
+              status: userData?.status || null,
+              contactInfo: userData?.contactInfo || { address: "", phone: "" },
+              socialLinks: userData?.socialLinks || {},
+              onboardingCompleted: userData?.onboardingCompleted || false,
+              createdAt: userData?.createdAt || new Date().toISOString(),
+              updatedAt: userData?.updatedAt || new Date().toISOString(),
+              assignedLocations: userData?.assignedLocations || [],
+              interestInShow: userData?.interestInShow || "",
+              artshowId: userData?.artshowId,
+            })
+          );
+
+          // Fetch mediums data
+          dispatch(fetchMediums());
+          dispatch(fetchLocations());
+          dispatch(fetchArtshows());
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          // If there's an error, set initializing to false
+          dispatch(setInitializing(false));
+        }
       } else {
         // If no user, set initializing to false
         dispatch(setInitializing(false));
@@ -89,6 +111,7 @@ const App = () => {
             }
           >
             <Route index element={<Onboarding />} />
+            <Route path="chat" element={<ChatPage />} />
           </Route>
 
           {/* Waiting Approval Route */}
@@ -111,6 +134,7 @@ const App = () => {
           >
             <Route path="artist/my-artwork" element={<MyArtwork />} />
             <Route path="artist/onboard-art" element={<OnboardArt />} />
+            <Route path="artist/chat" element={<ChatPage />} />
           </Route>
 
           {/* Admin Routes */}
@@ -130,6 +154,7 @@ const App = () => {
             <Route path="users" element={<Users />} />
             <Route path="users/:userId/artworks" element={<UserArtworks />} />
             <Route path="artworks" element={<Artworks />} />
+            <Route path="chat" element={<ChatPage />} />
           </Route>
 
           {/* Redirect root to appropriate route based on role */}
@@ -163,7 +188,6 @@ const App = () => {
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {user && !hideChatDrawer && <ChatDrawer />}
     </div>
   );
 };

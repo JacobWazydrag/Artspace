@@ -8,6 +8,7 @@ import logo from "../assets/artspaceLogo.jpg";
 import {
   ClipboardDocumentListIcon,
   ArrowRightOnRectangleIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 
 const OnboardingSidebar = () => {
@@ -46,6 +47,21 @@ const OnboardingSidebar = () => {
               <span className="flex items-center gap-3">
                 <ClipboardDocumentListIcon className="w-5 h-5" />
                 Onboarding
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/onboarding/chat"
+              className={`block px-4 py-2 rounded ${
+                isActive("/onboarding/chat")
+                  ? "bg-gray-900"
+                  : "hover:bg-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                Messages
               </span>
             </Link>
           </li>

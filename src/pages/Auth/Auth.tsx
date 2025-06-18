@@ -118,7 +118,19 @@ const Auth = () => {
         login({
           email: result.user.email!,
           id: result.user.uid,
-          photoURL: result.user.photoURL || null,
+          photoUrl: result.user.photoURL || null,
+          name: result.user.displayName || "",
+          bio: "",
+          role: "on-boarding",
+          status: null,
+          contactInfo: { address: "", phone: "" },
+          socialLinks: {},
+          onboardingCompleted: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          assignedLocations: [],
+          interestInShow: "",
+          artshowId: undefined,
         })
       );
 
@@ -157,7 +169,7 @@ const Auth = () => {
       // Create new user document in Firestore with all required fields
       await setDoc(doc(db, "users", result.user.uid), {
         email,
-        photoURL: result.user.photoURL || null,
+        photoUrl: result.user.photoURL || null,
         name: result.user.displayName || "",
         contactInfo: {
           address: "",
@@ -182,7 +194,19 @@ const Auth = () => {
         login({
           email: result.user.email!,
           id: result.user.uid,
-          photoURL: result.user.photoURL || null,
+          photoUrl: result.user.photoURL || null,
+          name: result.user.displayName || "",
+          bio: "",
+          role: "on-boarding",
+          status: null,
+          contactInfo: { address: "", phone: "" },
+          socialLinks: {},
+          onboardingCompleted: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          assignedLocations: [],
+          interestInShow: "",
+          artshowId: undefined,
         })
       );
 
@@ -210,7 +234,7 @@ const Auth = () => {
         // Create user document in Firestore
         await setDoc(doc(db, "users", user.uid), {
           email,
-          photoURL: null,
+          photoUrl: null,
           name: "",
           contactInfo: {
             address: "",
@@ -238,7 +262,19 @@ const Auth = () => {
             login({
               email: user.email,
               id: user.uid,
-              photoURL: user.photoURL || null,
+              photoUrl: user.photoURL || null,
+              name: user.displayName || "",
+              bio: "",
+              role: "on-boarding",
+              status: null,
+              contactInfo: { address: "", phone: "" },
+              socialLinks: {},
+              onboardingCompleted: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              assignedLocations: [],
+              interestInShow: "",
+              artshowId: undefined,
             })
           );
 
@@ -266,7 +302,16 @@ const Auth = () => {
             login({
               email: user.email,
               id: user.uid,
-              photoURL: user.photoURL || null,
+              photoUrl: user.photoURL || null,
+              name: user.displayName || "",
+              bio: "",
+              role: "on-boarding",
+              status: null,
+              contactInfo: { address: "", phone: "" },
+              socialLinks: {},
+              onboardingCompleted: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
             })
           );
 

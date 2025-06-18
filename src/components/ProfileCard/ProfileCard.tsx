@@ -14,7 +14,7 @@ const ProfileCard: FC<ProfileCardProps> = (props) => {
   const {
     handleLogout,
     profile,
-    user: { photoURL, email },
+    user: { photoUrl, email },
     setResetPassword,
   } = props;
 
@@ -22,10 +22,10 @@ const ProfileCard: FC<ProfileCardProps> = (props) => {
     <div className="w-screen h-[80vh] flex items-center justify-center">
       <div className="w-full p-4 max-w-sm bg-white border border-gray-200 rounded-lg shadow">
         <div className="flex flex-col items-center pb-10">
-          {photoURL ? (
+          {photoUrl ? (
             <img
               className="w-24 h-24 mb-3 object-cover rounded-full shadow-lg"
-              src={photoURL}
+              src={photoUrl}
               alt="Avatar"
             />
           ) : (

@@ -20,7 +20,7 @@ export interface Artshow {
   endDate: string;
   locationId: string;
   description?: string;
-  createdAt: Timestamp;
+  createdAt: string;
   createdBy?: string;
   photoUrl?: string | null;
   status: "active" | "inactive" | "closed";
@@ -44,10 +44,15 @@ export const fetchArtshows = createAsyncThunk(
   "artshows/fetchArtshows",
   async () => {
     const querySnapshot = await getDocs(collection(db, "artshows"));
-    const artshows = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Artshow[];
+    const artshows = querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt:
+          data.createdAt?.toDate().toISOString() || new Date().toISOString(),
+      };
+    }) as Artshow[];
     return artshows;
   }
 );
@@ -58,9 +63,12 @@ export const fetchArtshowById = createAsyncThunk(
     const artshowRef = doc(db, "artshows", id);
     const artshowSnap = await getDoc(artshowRef);
     if (artshowSnap.exists()) {
+      const data = artshowSnap.data();
       return {
         id: artshowSnap.id,
-        ...artshowSnap.data(),
+        ...data,
+        createdAt:
+          data.createdAt?.toDate().toISOString() || new Date().toISOString(),
       } as Artshow;
     }
     throw new Error("Artshow not found");

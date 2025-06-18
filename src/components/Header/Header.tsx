@@ -30,10 +30,10 @@ const Header = () => {
             )}
             {user ? (
               <Link to="/profile">
-                {user?.photoURL ? (
+                {user?.photoUrl ? (
                   <img
                     className={linkProfile}
-                    src={user.photoURL}
+                    src={user.photoUrl}
                     alt="Avatar"
                   />
                 ) : (
