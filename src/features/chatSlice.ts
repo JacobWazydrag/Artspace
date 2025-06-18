@@ -12,6 +12,8 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
+  writeBatch,
+  arrayUnion,
 } from "firebase/firestore";
 import { db } from "../firebase";
 
@@ -22,6 +24,7 @@ export interface Message {
   content: string;
   createdAt: string;
   read: boolean;
+  readBy: string[];
 }
 
 export interface Chat {
@@ -150,7 +153,7 @@ export const sendMessage = createAsyncThunk(
     message,
   }: {
     chatId: string;
-    message: Omit<Message, "id" | "createdAt">;
+    message: Omit<Message, "id" | "createdAt" | "readBy">;
   }) => {
     try {
       const messagesRef = collection(db, "messages");
@@ -161,6 +164,7 @@ export const sendMessage = createAsyncThunk(
         chatId,
         createdAt: serverTimestamp(),
         read: false,
+        readBy: [message.senderId],
       };
 
       const messageDoc = await addDoc(messagesRef, newMessage);
@@ -261,6 +265,97 @@ export const startChat = createAsyncThunk(
       } as Chat;
     } catch (error) {
       console.error("Error starting chat:", error);
+      throw error;
+    }
+  }
+);
+
+export const markMessagesAsRead = createAsyncThunk(
+  "chat/markMessagesAsRead",
+  async ({ chatId, userId }: { chatId: string; userId: string }) => {
+    try {
+      const messagesRef = collection(db, "messages");
+      const chatRef = doc(db, "chats", chatId);
+      const q = query(
+        messagesRef,
+        where("chatId", "==", chatId),
+        where("receiverId", "==", userId)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
+
+      // Get the chat document to update lastMessage
+      const chatDoc = await getDoc(chatRef);
+      const chatData = chatDoc.data();
+      const lastMessage = chatData?.lastMessage;
+
+      let foundLastMessage = false;
+
+      querySnapshot.docs.forEach((doc) => {
+        const message = doc.data();
+
+        if (!message.readBy?.includes(userId)) {
+          batch.update(doc.ref, {
+            readBy: arrayUnion(userId),
+            read: true,
+          });
+
+          // If this is the last message, update its readBy in the chat document
+          if (lastMessage && doc.id === lastMessage.id) {
+            foundLastMessage = true;
+
+            // Create a new lastMessage object with the updated readBy array
+            const existingReadBy = lastMessage.readBy || [];
+            const updatedReadBy = existingReadBy.includes(userId)
+              ? existingReadBy
+              : [...existingReadBy, userId];
+
+            const updatedLastMessage = {
+              ...lastMessage,
+              readBy: updatedReadBy,
+              read: true,
+            };
+
+            batch.update(chatRef, {
+              lastMessage: updatedLastMessage,
+              updatedAt: serverTimestamp(),
+            });
+          }
+        }
+      });
+
+      // If we didn't find the last message in the query results, update it directly
+      if (
+        !foundLastMessage &&
+        lastMessage &&
+        lastMessage.receiverId === userId
+      ) {
+        // Create a new lastMessage object with the updated readBy array
+        const existingReadBy = lastMessage.readBy || [];
+        const updatedReadBy = existingReadBy.includes(userId)
+          ? existingReadBy
+          : [...existingReadBy, userId];
+
+        const updatedLastMessage = {
+          ...lastMessage,
+          readBy: updatedReadBy,
+          read: true,
+        };
+
+        batch.update(chatRef, {
+          lastMessage: updatedLastMessage,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      try {
+        await batch.commit();
+      } catch (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
       throw error;
     }
   }

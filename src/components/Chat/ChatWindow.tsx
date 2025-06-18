@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
-import { fetchChatMessages, sendMessage } from "../../features/chatSlice";
+import {
+  fetchChatMessages,
+  sendMessage,
+  markMessagesAsRead,
+} from "../../features/chatSlice";
 import { format } from "date-fns";
 
 const ChatWindow = () => {
@@ -13,8 +17,11 @@ const ChatWindow = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (currentChat?.id) {
+    if (currentChat?.id && user?.id) {
+      // Fetch messages
       dispatch(fetchChatMessages(currentChat.id));
+      // Mark messages as read
+      dispatch(markMessagesAsRead({ chatId: currentChat.id, userId: user.id }));
     }
 
     // Cleanup function to unsubscribe from Firestore listeners
@@ -23,7 +30,7 @@ const ChatWindow = () => {
         (window as any).unsubscribeMessages();
       }
     };
-  }, [dispatch, currentChat?.id]);
+  }, [dispatch, currentChat?.id, user?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
