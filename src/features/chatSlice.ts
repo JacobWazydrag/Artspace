@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { PayloadAction } from "@reduxjs/toolkit";
+import { RootState } from "../store/store"; // adjust path if needed
 
 export interface Message {
   id?: string;
@@ -491,3 +492,15 @@ export const {
   updateMessage,
 } = chatSlice.actions;
 export default chatSlice.reducer;
+
+// Selector to check if there are any unread messages for the current user
+export const selectHasUnreadMessages = (state: RootState, userId: string) => {
+  return state.chat.chats.some((chat) => {
+    const lastMessage = chat.lastMessage;
+    return (
+      lastMessage &&
+      lastMessage.receiverId === userId &&
+      (!lastMessage.readBy || !lastMessage.readBy.includes(userId))
+    );
+  });
+};

@@ -1,12 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
-import { useAppDispatch } from "../hooks/storeHook";
+import { useAppDispatch, useAppSelector } from "../hooks/storeHook";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
 import { logout } from "../features/authSlice";
 import { clearProfile } from "../features/profileSlice";
 import logo from "../assets/artspaceLogo.jpg";
-import lightLogo from "../assets/light.png";
-import darkLogo from "../assets/dark.png";
 import {
   HomeIcon,
   MapPinIcon,
@@ -17,10 +15,16 @@ import {
   PaintBrushIcon,
   ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
+import { selectHasUnreadMessages } from "../features/chatSlice";
 
 const Sidebar = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
+
+  const { user } = useAppSelector((state) => state.auth);
+  const hasUnread = useAppSelector((state) =>
+    selectHasUnreadMessages(state, user?.id || "")
+  );
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -129,8 +133,12 @@ const Sidebar = () => {
                 isActive("/chat") ? "bg-gray-900" : "hover:bg-gray-700"
               }`}
             >
-              <span className="flex items-center gap-3">
-                <ChatBubbleLeftRightIcon className="w-5 h-5" />
+              <span className="flex items-center gap-3 relative">
+                <ChatBubbleLeftRightIcon
+                  className={`w-5 h-5 ${
+                    hasUnread ? "text-red-500" : "text-white"
+                  }`}
+                />
                 Messages
               </span>
             </Link>

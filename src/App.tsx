@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import Dashboard from "./pages/Dashboard/AdminDashboard";
@@ -15,7 +15,6 @@ import AuthRoutes from "./components/HOC/AuthRoutes";
 import RoleRoutes from "./components/HOC/RoleRoutes";
 import AdminLayout from "./components/Layouts/AdminLayout";
 import WaitingApproval from "./pages/WaitingApproval/WaitingApproval";
-import ProtectedRoute from "./components/ProtectedRoute";
 import Auth from "./pages/Auth/Auth";
 import Users from "./pages/Users/Users";
 import UserArtworks from "./pages/UserArtworks/UserArtworks";
@@ -32,16 +31,12 @@ import Store from "./pages/Store/Store";
 import ChatPage from "./pages/ChatPage";
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "./firebase";
+import { fetchUserChats } from "./features/chatSlice";
 
 const App = () => {
   const dispatch = useAppDispatch();
-  const {
-    data: profile,
-    loading,
-    error,
-  } = useAppSelector((state) => state.profile);
+  const { data: profile } = useAppSelector((state) => state.profile);
   const { user } = useAppSelector((state) => state.auth);
-  const location = useLocation();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -89,6 +84,18 @@ const App = () => {
 
     return () => unsubscribe();
   }, [dispatch]);
+
+  // Global chat listener
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchUserChats(user.id));
+    }
+    return () => {
+      if ((window as any).unsubscribeChats) {
+        (window as any).unsubscribeChats();
+      }
+    };
+  }, [dispatch, user?.id]);
 
   return (
     <div className="min-h-screen bg-gray-50">

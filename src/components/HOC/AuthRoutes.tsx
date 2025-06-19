@@ -103,7 +103,7 @@ const AuthRoutes = () => {
       return <Outlet />;
 
     case "on-boarding":
-      if (location.pathname === "/onboarding") {
+      if (location.pathname.startsWith("/onboarding")) {
         return <Outlet />;
       }
       return <Navigate to="/onboarding" replace />;

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { useAppDispatch } from "../hooks/storeHook";
+import { useAppDispatch, useAppSelector } from "../hooks/storeHook";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
 import { logout } from "../features/authSlice";
@@ -10,10 +10,16 @@ import {
   ArrowRightOnRectangleIcon,
   ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
+import { selectHasUnreadMessages } from "../features/chatSlice";
 
 const OnboardingSidebar = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
+
+  const { user } = useAppSelector((state) => state.auth);
+  const hasUnread = useAppSelector((state) =>
+    selectHasUnreadMessages(state, user?.id || "")
+  );
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -60,7 +66,11 @@ const OnboardingSidebar = () => {
               }`}
             >
               <span className="flex items-center gap-3">
-                <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                <ChatBubbleLeftRightIcon
+                  className={`w-5 h-5 ${
+                    hasUnread ? "text-red-500" : "text-white"
+                  }`}
+                />
                 Messages
               </span>
             </Link>

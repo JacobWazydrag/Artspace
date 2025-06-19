@@ -1,11 +1,6 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
-import {
-  fetchUserChats,
-  createChat,
-  setCurrentChat,
-  Chat,
-} from "../../features/chatSlice";
+import { createChat, setCurrentChat, Chat } from "../../features/chatSlice";
 import { format } from "date-fns";
 import { User } from "../../models/User";
 
@@ -33,14 +28,6 @@ const ChatList: React.FC = () => {
   // Check if current user is admin based on their data in users array
   const isCurrentUserAdmin = currentUserData?.role === "admin";
 
-  // Filter available users
-  const availableUsers = useMemo(() => {
-    return users.filter(
-      (u) =>
-        u.id !== currentUser?.id && !existingChatParticipants.includes(u.id!)
-    );
-  }, [users, currentUser?.id, existingChatParticipants]);
-
   // Filter users based on search query and role
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -56,35 +43,7 @@ const ChatList: React.FC = () => {
 
       return isVisible && !hasExistingChat;
     });
-  }, [
-    users,
-    currentUser?.id,
-    existingChatParticipants,
-    isCurrentUserAdmin,
-    currentUserData?.role,
-  ]);
-
-  useEffect(() => {
-    if (currentUser) {
-      dispatch(fetchUserChats(currentUser.id!)).then((result) => {
-        // If there are chats and no current chat is selected, select the first one
-        if (
-          result.payload &&
-          (result.payload as Chat[]).length > 0 &&
-          !currentChat
-        ) {
-          dispatch(setCurrentChat((result.payload as Chat[])[0]));
-        }
-      });
-    }
-
-    // Cleanup function to unsubscribe from Firestore listeners
-    return () => {
-      if ((window as any).unsubscribeChats) {
-        (window as any).unsubscribeChats();
-      }
-    };
-  }, [dispatch, currentUser, currentChat]);
+  }, [users, currentUser?.id, existingChatParticipants, isCurrentUserAdmin]);
 
   const handleStartChat = async () => {
     if (!selectedUser || !currentUser) return;
