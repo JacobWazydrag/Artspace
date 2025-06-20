@@ -229,7 +229,10 @@ const Auth = () => {
   const sendNewUserNotification = async (userEmail: string, name: string) => {
     try {
       const mailData = {
-        toUids: ["7vwsK29oPrViRdDgBP6ouy7iSS12"],
+        toUids: [
+          "7vwsK29oPrViRdDgBP6ouy7iSS12",
+          "Qx024IwKt6WdcduieHNTnVxFWHh1",
+        ],
         message: {
           subject: "🎨 New Artist Joins ArtSpace Chicago!",
           html: `
