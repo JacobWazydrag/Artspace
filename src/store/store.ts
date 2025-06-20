@@ -8,6 +8,7 @@ import usersReducer from "../features/usersSlice";
 import artworkReducer from "../features/artworkSlice";
 import publicReducer from "../features/publicSlice";
 import chatReducer from "../features/chatSlice";
+import mailReducer from "../features/mailSlice";
 
 export const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ export const store = configureStore({
     artwork: artworkReducer,
     public: publicReducer,
     chat: chatReducer,
+    mail: mailReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

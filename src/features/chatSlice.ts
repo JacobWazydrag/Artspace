@@ -180,6 +180,85 @@ export const sendMessage = createAsyncThunk(
         updatedAt: serverTimestamp(),
       });
 
+      // Check if sender is admin and send email notification
+      try {
+        const senderDoc = await getDoc(doc(db, "users", message.senderId));
+        const receiverDoc = await getDoc(doc(db, "users", message.receiverId));
+
+        if (senderDoc.exists() && receiverDoc.exists()) {
+          const senderData = senderDoc.data();
+          const receiverData = receiverDoc.data();
+
+          // Check if sender is admin AND receiver has email notifications enabled
+          if (
+            senderData.role === "admin" &&
+            receiverData.notificationPreferences?.email?.active === true
+          ) {
+            const receiverName = receiverData.name || "User";
+
+            const mailData = {
+              toUids: [message.receiverId],
+              message: {
+                subject: "💬 New Message from ArtSpace Chicago Admin",
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; border-radius: 10px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                      <h1 style="color: #6b46c1; margin: 0; font-size: 28px;">💬 ArtSpace Chicago</h1>
+                      <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">New Message Notification</p>
+                    </div>
+                    
+                    <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                      <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px;">You have a new message! 📬</h2>
+                      
+                      <div style="background-color: #f0f4ff; padding: 20px; border-radius: 6px; border-left: 4px solid #6b46c1; margin-bottom: 25px;">
+                        <h3 style="color: #6b46c1; margin: 0 0 15px 0; font-size: 18px;">Message Details:</h3>
+                        <p style="margin: 8px 0; color: #333;"><strong>From:</strong> ${
+                          senderData.name || "ArtSpace Admin"
+                        }</p>
+                        <p style="margin: 8px 0; color: #333;"><strong>To:</strong> ${receiverName}</p>
+                        <p style="margin: 8px 0; color: #333;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                      </div>
+                      
+                      <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
+                        <p style="margin: 0; color: #555; font-style: italic;">
+                          "${message.content}"
+                        </p>
+                      </div>
+                      
+                      <div style="background-color: #e8f5e8; padding: 15px; border-radius: 6px; border-left: 4px solid #48bb78;">
+                        <p style="margin: 0; color: #2f855a; font-weight: 500;">
+                          💡 <strong>Action Required:</strong> Please log into your ArtSpace Chicago portal to view and respond to this message.
+                        </p>
+                      </div>
+                      
+                      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <p style="color: #666; font-size: 14px; margin: 0;">
+                          This is an automated notification from ArtSpace Chicago. 
+                          You can access your messages through the chat feature in your portal.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                      <p>ArtSpace Chicago - Supporting Emerging Artists</p>
+                    </div>
+                  </div>
+                `,
+              },
+            };
+
+            // Create mail document directly in Firestore
+            await addDoc(collection(db, "mail"), {
+              ...mailData,
+              createdAt: serverTimestamp(),
+            });
+          }
+        }
+      } catch (emailError) {
+        console.error("Failed to send email notification:", emailError);
+        // Don't fail the message sending if email fails
+      }
+
       return {
         id: messageDoc.id,
         ...newMessage,

@@ -17,6 +17,7 @@ interface ContactInfoProps {
 interface ContactInfo {
   phone: string;
   address: string;
+  emailNotifications: boolean;
 }
 
 const ContactInfo = ({ onComplete, isComplete }: ContactInfoProps) => {
@@ -26,6 +27,7 @@ const ContactInfo = ({ onComplete, isComplete }: ContactInfoProps) => {
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
     phone: profile?.contactInfo?.phone || "",
     address: profile?.contactInfo?.address || "",
+    emailNotifications: profile?.notificationPreferences?.email?.active ?? true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -36,15 +38,17 @@ const ContactInfo = ({ onComplete, isComplete }: ContactInfoProps) => {
 
   // Update form when profile changes
   useEffect(() => {
-    if (profile?.contactInfo) {
+    if (profile) {
       setContactInfo({
-        phone: profile.contactInfo.phone || "",
-        address: profile.contactInfo.address || "",
+        phone: profile.contactInfo?.phone || "",
+        address: profile.contactInfo?.address || "",
+        emailNotifications:
+          profile.notificationPreferences?.email?.active ?? true,
       });
     }
   }, [profile]);
 
-  const handleChange = (field: keyof ContactInfo, value: string) => {
+  const handleChange = (field: keyof ContactInfo, value: string | boolean) => {
     setContactInfo((prev) => ({
       ...prev,
       [field]: value,
@@ -77,19 +81,57 @@ const ContactInfo = ({ onComplete, isComplete }: ContactInfoProps) => {
     // Don't submit if nothing has changed
     if (
       contactInfo.phone === profile.contactInfo?.phone &&
-      contactInfo.address === profile.contactInfo?.address
+      contactInfo.address === profile.contactInfo?.address &&
+      contactInfo.emailNotifications ===
+        (profile.notificationPreferences?.email?.active ?? true)
     ) {
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await updateDoc(doc(db, "users", profile.id), {
-        contactInfo,
+      const updateData: any = {
+        contactInfo: {
+          phone: contactInfo.phone,
+          address: contactInfo.address,
+        },
         updatedAt: new Date().toISOString(),
-      });
+      };
+
+      // Add notification preferences if they don't exist or need updating
+      if (
+        !profile.notificationPreferences ||
+        profile.notificationPreferences.email.active !==
+          contactInfo.emailNotifications
+      ) {
+        updateData.notificationPreferences = {
+          email: {
+            active: contactInfo.emailNotifications,
+            frequency:
+              profile.notificationPreferences?.email?.frequency || "daily",
+          },
+        };
+      }
+
+      await updateDoc(doc(db, "users", profile.id), updateData);
+
       // Optimistically update the profile state
-      dispatch(setProfileData({ ...profile, contactInfo }));
+      const updatedProfile = {
+        ...profile,
+        contactInfo: {
+          phone: contactInfo.phone,
+          address: contactInfo.address,
+        },
+        notificationPreferences: {
+          email: {
+            active: contactInfo.emailNotifications,
+            frequency:
+              profile.notificationPreferences?.email?.frequency || "daily",
+          },
+        },
+      };
+      dispatch(setProfileData(updatedProfile));
+
       // Optionally fetch the latest profile from the server
       await dispatch(fetchUserProfile(profile.id)).unwrap();
       toast.success("Contact information updated successfully");
@@ -155,6 +197,51 @@ const ContactInfo = ({ onComplete, isComplete }: ContactInfoProps) => {
             required
             disabled={isSubmitting}
           />
+        </div>
+
+        <div>
+          <label className={label}>Email Notifications</label>
+          <div className="space-y-3">
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="email-notifications-yes"
+                name="emailNotifications"
+                value="true"
+                checked={contactInfo.emailNotifications === true}
+                onChange={() => handleChange("emailNotifications", true)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2"
+                disabled={isSubmitting}
+              />
+              <label
+                htmlFor="email-notifications-yes"
+                className="ml-2 text-sm font-medium text-gray-700"
+              >
+                Yes, I would like to receive email notifications
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="email-notifications-no"
+                name="emailNotifications"
+                value="false"
+                checked={contactInfo.emailNotifications === false}
+                onChange={() => handleChange("emailNotifications", false)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 focus:ring-2"
+                disabled={isSubmitting}
+              />
+              <label
+                htmlFor="email-notifications-no"
+                className="ml-2 text-sm font-medium text-gray-700"
+              >
+                No, I do not want to receive email notifications
+              </label>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            You can change this preference at any time in your profile settings.
+          </p>
         </div>
 
         <div className="flex justify-end">

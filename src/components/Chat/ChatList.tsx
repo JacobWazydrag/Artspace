@@ -80,21 +80,21 @@ const ChatList: React.FC = () => {
     return otherUser?.photoUrl;
   };
 
-  const getReadStatus = (chat: Chat) => {
-    if (!chat.lastMessage) return null;
-    const readBy = chat.lastMessage.readBy || [];
-    const totalParticipants = chat.participants.length;
-    const readCount = readBy.length;
+  // const getReadStatus = (chat: Chat) => {
+  //   if (!chat.lastMessage) return null;
+  //   const readBy = chat.lastMessage.readBy || [];
+  //   const totalParticipants = chat.participants.length;
+  //   const readCount = readBy.length;
 
-    // Check if the current user has read the message
-    const isReadByMe = currentUser?.id
-      ? readBy.includes(currentUser.id)
-      : false;
+  //   // Check if the current user has read the message
+  //   const isReadByMe = currentUser?.id
+  //     ? readBy.includes(currentUser.id)
+  //     : false;
 
-    if (!isReadByMe) return "Unread by you";
-    if (readCount === totalParticipants) return "Read by all";
-    return `Read by ${readCount}/${totalParticipants}`;
-  };
+  //   if (!isReadByMe) return "Unread by you";
+  //   if (readCount === totalParticipants) return "Read by all";
+  //   return `Read by ${readCount}/${totalParticipants}`;
+  // };
 
   return (
     <div className="flex flex-col h-full">
@@ -204,11 +204,11 @@ const ChatList: React.FC = () => {
                           ? chat.lastMessage.content
                           : "No messages yet"}
                       </p>
-                      {chat.lastMessage && (
+                      {/* {chat.lastMessage && (
                         <span className="text-xs text-gray-400 ml-2">
                           {getReadStatus(chat)}
                         </span>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </div>

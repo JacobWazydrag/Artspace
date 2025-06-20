@@ -1,5 +1,13 @@
 {
   "projects": {
     "default": "artspace-3d76f"
+  },
+  "targets": {},
+  "etags": {
+    "artspace-3d76f": {
+      "extensionInstances": {
+        "firestore-send-email": "9e48c1a81bc62a55b6c2dd859a063206376e20275f6c7e65fe118344bf1a68ea"
+      }
+    }
   }
 }

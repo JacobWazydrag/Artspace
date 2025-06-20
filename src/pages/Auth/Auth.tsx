@@ -4,19 +4,19 @@ import { useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
+  // GoogleAuthProvider,
+  // signInWithPopup,
   sendPasswordResetEmail,
-  signOut,
+  // signOut,
 } from "firebase/auth";
 import {
   setDoc,
   doc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
+  // getDoc,
+  // collection,
+  // query,
+  // where,
+  // getDocs,
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
@@ -26,6 +26,7 @@ import { authFormSchema } from "../../models/Form";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import { login } from "../../features/authSlice";
 import { fetchUserProfile } from "../../features/profileSlice";
+import { sendMail } from "../../features/mailSlice";
 import ResetPassword from "../../components/ResetPassword/ResetPassword";
 import { toast } from "react-hot-toast";
 
@@ -33,6 +34,7 @@ interface FormValues {
   email: string;
   password: string;
   confirmPassword?: string;
+  name: string;
 }
 
 const Auth = () => {
@@ -63,7 +65,7 @@ const Auth = () => {
     form,
     buttonHoverPurple,
     authInput,
-    text,
+    // text,
     link,
     hrReverseDark,
     forgotPasswordButton,
@@ -83,146 +85,209 @@ const Auth = () => {
     }
   };
 
-  const checkUserExistsByEmail = async (email: string) => {
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("email", "==", email));
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
-  };
+  // const checkUserExistsByEmail = async (email: string) => {
+  //   const usersRef = collection(db, "users");
+  //   const q = query(usersRef, where("email", "==", email));
+  //   const querySnapshot = await getDocs(q);
+  //   return !querySnapshot.empty;
+  // };
 
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
+  // const signInWithGoogle = async () => {
+  //   const provider = new GoogleAuthProvider();
+  //   try {
+  //     // First, get the email from Google without creating a Firebase user
+  //     const result = await signInWithPopup(auth, provider);
+  //     const email = result.user.email;
+
+  //     if (!email) {
+  //       toast.error("No email provided by Google");
+  //       await signOut(auth);
+  //       return;
+  //     }
+
+  //     // Check if user exists in our database
+  //     const userExists = await checkUserExistsByEmail(email);
+
+  //     if (!userExists) {
+  //       // If user doesn't exist, show message to sign up instead
+  //       toast.error("No account found. Please sign up instead.");
+  //       await signOut(auth);
+  //       return;
+  //     }
+
+  //     // User exists, proceed with login
+  //     dispatch(
+  //       login({
+  //         email: result.user.email!,
+  //         id: result.user.uid,
+  //         photoUrl: result.user.photoURL || null,
+  //         name: result.user.displayName || "",
+  //         bio: "",
+  //         role: "on-boarding",
+  //         status: null,
+  //         contactInfo: { address: "", phone: "" },
+  //         socialLinks: {},
+  //         onboardingCompleted: false,
+  //         createdAt: new Date().toISOString(),
+  //         updatedAt: new Date().toISOString(),
+  //         assignedLocations: [],
+  //         interestInShow: "",
+  //         artshowId: undefined,
+  //       })
+  //     );
+
+  //     // Fetch the existing profile
+  //     dispatch(fetchUserProfile(result.user.uid));
+  //     toast.success("Signed in successfully");
+  //   } catch (error) {
+  //     toast.error("Error signing in with Google");
+  //     await signOut(auth);
+  //   }
+  // };
+
+  // const signUpWithGoogle = async () => {
+  //   const provider = new GoogleAuthProvider();
+  //   try {
+  //     // First, get the email from Google without creating a Firebase user
+  //     const result = await signInWithPopup(auth, provider);
+  //     const email = result.user.email;
+
+  //     if (!email) {
+  //       toast.error("No email provided by Google");
+  //       await signOut(auth);
+  //       return;
+  //     }
+
+  //     // Check if user exists in our database
+  //     const userExists = await checkUserExistsByEmail(email);
+
+  //     if (userExists) {
+  //       // If user exists, show message to sign in instead
+  //       toast.error("Account already exists. Please sign in instead.");
+  //       await signOut(auth);
+  //       return;
+  //     }
+
+  //     // Create new user document in Firestore with all required fields
+  //     await setDoc(doc(db, "users", result.user.uid), {
+  //       email,
+  //       photoUrl: result.user.photoURL || null,
+  //       name: result.user.displayName || "",
+  //       contactInfo: {
+  //         address: "",
+  //         phone: "",
+  //       },
+  //       status: "pending",
+  //       createdAt: new Date().toISOString(),
+  //       updatedAt: new Date().toISOString(),
+  //       role: "on-boarding",
+  //       socialLinks: {
+  //         facebook: "",
+  //         instagram: "",
+  //         twitter: "",
+  //         linkedin: "",
+  //       },
+  //       bio: "",
+  //       assignedLocations: [],
+  //       interestInShow: "",
+  //     });
+
+  //     dispatch(
+  //       login({
+  //         email: result.user.email!,
+  //         id: result.user.uid,
+  //         photoUrl: result.user.photoURL || null,
+  //         name: result.user.displayName || "",
+  //         bio: "",
+  //         role: "on-boarding",
+  //         status: null,
+  //         contactInfo: { address: "", phone: "" },
+  //         socialLinks: {},
+  //         onboardingCompleted: false,
+  //         createdAt: new Date().toISOString(),
+  //         updatedAt: new Date().toISOString(),
+  //         assignedLocations: [],
+  //         interestInShow: "",
+  //         artshowId: undefined,
+  //       })
+  //     );
+
+  //     // Fetch the newly created profile
+  //     dispatch(fetchUserProfile(result.user.uid));
+  //     toast.success("Account created successfully");
+
+  //     await sendNewUserNotification(
+  //       result.user.email || "",
+  //       result.user.displayName || ""
+  //     );
+  //   } catch (error) {
+  //     toast.error("Error signing up with Google");
+  //     await signOut(auth);
+  //   }
+  // };
+
+  const sendNewUserNotification = async (userEmail: string, name: string) => {
     try {
-      // First, get the email from Google without creating a Firebase user
-      const result = await signInWithPopup(auth, provider);
-      const email = result.user.email;
-
-      if (!email) {
-        toast.error("No email provided by Google");
-        await signOut(auth);
-        return;
-      }
-
-      // Check if user exists in our database
-      const userExists = await checkUserExistsByEmail(email);
-
-      if (!userExists) {
-        // If user doesn't exist, show message to sign up instead
-        toast.error("No account found. Please sign up instead.");
-        await signOut(auth);
-        return;
-      }
-
-      // User exists, proceed with login
-      dispatch(
-        login({
-          email: result.user.email!,
-          id: result.user.uid,
-          photoUrl: result.user.photoURL || null,
-          name: result.user.displayName || "",
-          bio: "",
-          role: "on-boarding",
-          status: null,
-          contactInfo: { address: "", phone: "" },
-          socialLinks: {},
-          onboardingCompleted: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          assignedLocations: [],
-          interestInShow: "",
-          artshowId: undefined,
-        })
-      );
-
-      // Fetch the existing profile
-      dispatch(fetchUserProfile(result.user.uid));
-      toast.success("Signed in successfully");
-    } catch (error) {
-      toast.error("Error signing in with Google");
-      await signOut(auth);
-    }
-  };
-
-  const signUpWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      // First, get the email from Google without creating a Firebase user
-      const result = await signInWithPopup(auth, provider);
-      const email = result.user.email;
-
-      if (!email) {
-        toast.error("No email provided by Google");
-        await signOut(auth);
-        return;
-      }
-
-      // Check if user exists in our database
-      const userExists = await checkUserExistsByEmail(email);
-
-      if (userExists) {
-        // If user exists, show message to sign in instead
-        toast.error("Account already exists. Please sign in instead.");
-        await signOut(auth);
-        return;
-      }
-
-      // Create new user document in Firestore with all required fields
-      await setDoc(doc(db, "users", result.user.uid), {
-        email,
-        photoUrl: result.user.photoURL || null,
-        name: result.user.displayName || "",
-        contactInfo: {
-          address: "",
-          phone: "",
+      const mailData = {
+        toUids: ["7vwsK29oPrViRdDgBP6ouy7iSS12"],
+        message: {
+          subject: "🎨 New Artist Joins ArtSpace Chicago!",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; border-radius: 10px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #6b46c1; margin: 0; font-size: 28px;">🎨 ArtSpace Chicago</h1>
+                <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">New Artist Registration</p>
+              </div>
+              
+              <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px;">Welcome New Artist! 🎉</h2>
+                
+                <div style="background-color: #f0f4ff; padding: 20px; border-radius: 6px; border-left: 4px solid #6b46c1; margin-bottom: 25px;">
+                  <h3 style="color: #6b46c1; margin: 0 0 15px 0; font-size: 18px;">Artist Details:</h3>
+                  <p style="margin: 8px 0; color: #333;"><strong>Name:</strong> ${
+                    name || "Not provided"
+                  }</p>
+                  <p style="margin: 8px 0; color: #333;"><strong>Email:</strong> ${userEmail}</p>
+                  <p style="margin: 8px 0; color: #333;"><strong>Registration Date:</strong> ${new Date().toLocaleDateString()}</p>
+                </div>
+                
+                <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+                  A new artist has successfully registered on Art Space Chicago! They're now ready to begin their onboarding process and showcase their artwork in our community.
+                </p>
+                
+                <div style="background-color: #e8f5e8; padding: 15px; border-radius: 6px; border-left: 4px solid #48bb78;">
+                  <p style="margin: 0; color: #2f855a; font-weight: 500;">
+                    ✅ Account Status: <strong>${name} will start the on-boarding process through their portal. Be sure to send them a welcome chat through the chat feature.</strong>
+                  </p>
+                </div>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                  <p style="color: #666; font-size: 14px; margin: 0;">
+                    This is an automated notification from Art Space Chicago. 
+                    The artist will be guided through the onboarding process to complete their profile.
+                  </p>
+                </div>
+              </div>
+              
+              <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                <p>ArtSpace Chicago - Supporting Emerging Artists</p>
+              </div>
+            </div>
+          `,
         },
-        status: "pending",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        role: "on-boarding",
-        socialLinks: {
-          facebook: "",
-          instagram: "",
-          twitter: "",
-          linkedin: "",
-        },
-        bio: "",
-        assignedLocations: [],
-        interestInShow: "",
-      });
+      };
 
-      dispatch(
-        login({
-          email: result.user.email!,
-          id: result.user.uid,
-          photoUrl: result.user.photoURL || null,
-          name: result.user.displayName || "",
-          bio: "",
-          role: "on-boarding",
-          status: null,
-          contactInfo: { address: "", phone: "" },
-          socialLinks: {},
-          onboardingCompleted: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          assignedLocations: [],
-          interestInShow: "",
-          artshowId: undefined,
-        })
-      );
-
-      // Fetch the newly created profile
-      dispatch(fetchUserProfile(result.user.uid));
-      toast.success("Account created successfully");
+      await dispatch(sendMail(mailData)).unwrap();
     } catch (error) {
-      toast.error("Error signing up with Google");
-      await signOut(auth);
+      console.error("Failed to send new user notification:", error);
+      // Don't show error to user as this is just a notification
     }
   };
 
   const handleFormSubmit: SubmitHandler<FormValues> = async (data) => {
     setErrorMessage(null);
     setLoading(true);
-    const { email, password } = data;
+    const { email, password, name } = data;
     if (authType === "sign-up") {
       try {
         const { user } = await createUserWithEmailAndPassword(
@@ -235,7 +300,7 @@ const Auth = () => {
         await setDoc(doc(db, "users", user.uid), {
           email,
           photoUrl: null,
-          name: "",
+          name,
           contactInfo: {
             address: "",
             phone: "",
@@ -253,6 +318,9 @@ const Auth = () => {
           bio: "",
           assignedLocations: [],
           interestInShow: "",
+          notificationPreferences: {
+            email: { active: false, frequency: "" },
+          },
         });
 
         setLoading(false);
@@ -263,7 +331,7 @@ const Auth = () => {
               email: user.email,
               id: user.uid,
               photoUrl: user.photoURL || null,
-              name: user.displayName || "",
+              name: name || "",
               bio: "",
               role: "on-boarding",
               status: null,
@@ -281,6 +349,8 @@ const Auth = () => {
           // Fetch the newly created profile
           dispatch(fetchUserProfile(user.uid));
           toast.success("Account created successfully");
+
+          await sendNewUserNotification(user.email, name || "");
         }
       } catch (error: any) {
         setLoading(false);
@@ -303,7 +373,7 @@ const Auth = () => {
               email: user.email,
               id: user.uid,
               photoUrl: user.photoURL || null,
-              name: user.displayName || "",
+              name: name || "",
               bio: "",
               role: "on-boarding",
               status: null,
@@ -427,6 +497,21 @@ const Auth = () => {
                     <span className="text-red-700">
                       {errors.confirmPassword.message}
                     </span>
+                  ) : (
+                    <></>
+                  )}
+                </div>
+              )}
+              {authType === "sign-up" && (
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Enter your full name"
+                    className={authInput}
+                    {...register("name")}
+                  />
+                  {errors.name ? (
+                    <span className="text-red-700">{errors.name.message}</span>
                   ) : (
                     <></>
                   )}

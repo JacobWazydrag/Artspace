@@ -20,4 +20,7 @@ export interface User {
   assignedLocations?: string[];
   interestInShow?: string;
   artshowId?: string;
+  notificationPreferences?: {
+    email: { active: boolean; frequency: "daily" | "weekly" | "monthly" };
+  };
 }

@@ -28,4 +28,7 @@ export interface UserProfile {
   photoUrl?: string | null;
   interestInShow?: string;
   shownAtArtspace?: boolean;
+  notificationPreferences?: {
+    email: { active: boolean; frequency: "daily" | "weekly" | "monthly" };
+  };
 }
