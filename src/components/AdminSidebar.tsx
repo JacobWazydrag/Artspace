@@ -14,6 +14,7 @@ import {
   ArrowRightOnRectangleIcon,
   PaintBrushIcon,
   ChatBubbleLeftRightIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
 
@@ -140,6 +141,19 @@ const Sidebar = () => {
                   }`}
                 />
                 Messages
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/invitation"
+              className={`block px-4 py-2 rounded ${
+                isActive("/invitation") ? "bg-gray-900" : "hover:bg-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <EnvelopeIcon className="w-5 h-5" />
+                Invitation
               </span>
             </Link>
           </li>

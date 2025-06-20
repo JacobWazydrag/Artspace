@@ -29,6 +29,7 @@ import ArtshowArtists from "./pages/Artshows/ArtshowArtists";
 import OnboardArt from "./pages/Artist/OnboardArt";
 import Store from "./pages/Store/Store";
 import ChatPage from "./pages/ChatPage";
+import Invitation from "./pages/Invitation/Invitation";
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "./firebase";
 import { fetchUserChats } from "./features/chatSlice";
@@ -162,6 +163,7 @@ const App = () => {
             <Route path="users/:userId/artworks" element={<UserArtworks />} />
             <Route path="artworks" element={<Artworks />} />
             <Route path="chat" element={<ChatPage />} />
+            <Route path="invitation" element={<Invitation />} />
           </Route>
 
           {/* Redirect root to appropriate route based on role */}
