@@ -68,6 +68,8 @@ const Invitation = () => {
 
       // Send invitation emails
       const mailData = {
+        replyTo: "artspacechicago@gmail.com",
+        cc: ["artspacechicago@gmail.com", "jgw.jakegeorge@gmail.com"],
         bcc: emailList,
         message: {
           subject: "🎨 You're Invited to Join ArtSpace Chicago!",

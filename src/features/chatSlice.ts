@@ -197,6 +197,7 @@ export const sendMessage = createAsyncThunk(
             const receiverName = receiverData.name || "User";
 
             const mailData = {
+              replyTo: "artspacechicago@gmail.com",
               toUids: [message.receiverId],
               message: {
                 subject: "💬 New Message from ArtSpace Chicago Admin",

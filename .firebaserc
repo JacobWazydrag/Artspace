@@ -1,12 +1,19 @@
 {
   "projects": {
-    "default": "artspace-3d76f"
+    "default": "artspace-3d76f",
+    "prod": "artspace-3d76f",
+    "dev": "artspace-dev"
   },
   "targets": {},
   "etags": {
     "artspace-3d76f": {
       "extensionInstances": {
         "firestore-send-email": "9e48c1a81bc62a55b6c2dd859a063206376e20275f6c7e65fe118344bf1a68ea"
+      }
+    },
+    "artspace-dev": {
+      "extensionInstances": {
+        "firestore-send-email": "e3080ef7b1a14549b6d30ace03e3dfa09d0ca8bed2e983e66b6eac182e7c58bd"
       }
     }
   }
