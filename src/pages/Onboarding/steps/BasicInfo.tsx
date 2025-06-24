@@ -34,6 +34,7 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
   const dispatch = useAppDispatch();
   const { data: profile } = useAppSelector((state) => state.profile);
   const { data: artshows } = useAppSelector((state) => state.artshows);
+  const { user } = useAppSelector((state) => state.auth);
   const [basicInfo, setBasicInfo] = useState<BasicInfo>({
     name: "",
     email: "",
@@ -153,10 +154,11 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
           await deleteObject(oldPhotoRef);
         }
 
-        // Upload new photo
+        // Use the authenticated user's UID for the folder
+        const userId = user?.id || profile.id;
         const storageRef = ref(
           storage,
-          `profile_photos/${profile.id}/${Date.now()}_${selectedFile.name}`
+          `profile_photos/${userId}/${Date.now()}_${selectedFile.name}`
         );
         const snapshot = await uploadBytes(storageRef, selectedFile);
         photoUrl = await getDownloadURL(snapshot.ref);

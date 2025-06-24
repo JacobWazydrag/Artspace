@@ -100,6 +100,8 @@ const Artshows = () => {
       return saved ? JSON.parse(saved) : DEFAULT_COLUMN_VISIBILITY;
     }
   );
+  const [previewArtshow, setPreviewArtshow] = useState<Artshow | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const filteredArtshows = useMemo(() => {
     return artshows
@@ -307,18 +309,26 @@ const Artshows = () => {
   };
 
   const handleCloseShow = async (id: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to close this art show? This action cannot be undone."
-      )
-    ) {
+    if (window.confirm("Are you sure you want to close this show?")) {
+      setIsSubmitting(true);
       try {
         await dispatch(closeShow(id)).unwrap();
-        dispatch(fetchArtshows());
       } catch (error) {
-        console.error("Error closing art show:", error);
+        console.error("Error closing show:", error);
+      } finally {
+        setIsSubmitting(false);
       }
     }
+  };
+
+  const handlePreview = (artshow: Artshow) => {
+    setPreviewArtshow(artshow);
+    setIsPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewArtshow(null);
   };
 
   const toggleColumn = (column: keyof ColumnVisibility) => {
@@ -1101,24 +1111,33 @@ const Artshows = () => {
                       )}
                       {columnVisibility.actions && (
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          {artshow.status === "active" && (
+                          <div className="flex flex-col space-y-2">
                             <button
-                              onClick={() =>
-                                artshow.id && handleCloseShow(artshow.id)
-                              }
-                              className="text-yellow-600 hover:text-yellow-900 mr-4"
+                              onClick={() => handlePreview(artshow)}
+                              className="text-orange-600 hover:text-orange-900"
                               disabled={isSubmitting}
                             >
-                              Close Show
+                              Preview
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleEdit(artshow)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
-                            disabled={isSubmitting}
-                          >
-                            Edit
-                          </button>
+                            {artshow.status === "active" && (
+                              <button
+                                onClick={() =>
+                                  artshow.id && handleCloseShow(artshow.id)
+                                }
+                                className="text-yellow-600 hover:text-yellow-900"
+                                disabled={isSubmitting}
+                              >
+                                Close Show
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleEdit(artshow)}
+                              className="text-blue-600 hover:text-blue-900"
+                              disabled={isSubmitting}
+                            >
+                              Edit
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -1129,6 +1148,179 @@ const Artshows = () => {
           )}
         </div>
       </ContentWrapper>
+
+      {/* Preview Modal */}
+      {isPreviewOpen && previewArtshow && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Art Show Preview
+                </h2>
+                <button
+                  onClick={closePreview}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Photo */}
+                {previewArtshow.photoUrl && (
+                  <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                    <img
+                      src={previewArtshow.photoUrl}
+                      alt={previewArtshow.name}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                )}
+
+                {/* Title and Subtitle */}
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    {previewArtshow.name}
+                  </h1>
+                  {previewArtshow.subTitle && (
+                    <p className="text-xl text-gray-600 italic">
+                      {previewArtshow.subTitle}
+                    </p>
+                  )}
+                </div>
+
+                {/* Status Badge */}
+                <div>
+                  <span
+                    className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                      previewArtshow.status === "active"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {previewArtshow.status.charAt(0).toUpperCase() +
+                      previewArtshow.status.slice(1)}
+                  </span>
+                </div>
+
+                {/* Dates */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                    Show Dates
+                  </h3>
+                  <div className="flex items-center gap-4 text-blue-800">
+                    <div>
+                      <span className="font-medium">Start:</span>{" "}
+                      {new Date(
+                        previewArtshow.startDate + "T00:00:00"
+                      ).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </div>
+                    <div>
+                      <span className="font-medium">End:</span>{" "}
+                      {new Date(
+                        previewArtshow.endDate + "T00:00:00"
+                      ).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Location
+                  </h3>
+                  <p className="text-gray-700">
+                    {locations?.find(
+                      (loc) => loc.id === previewArtshow.locationId
+                    )?.name +
+                      " " +
+                      locations?.find(
+                        (loc) => loc.id === previewArtshow.locationId
+                      )?.address || "Location not specified"}{" "}
+                    {locations?.find(
+                      (loc) => loc.id === previewArtshow.locationId
+                    )?.city +
+                      " " +
+                      locations?.find(
+                        (loc) => loc.id === previewArtshow.locationId
+                      )?.state || "Location not specified"}
+                  </p>
+                </div>
+
+                {/* Description */}
+                {previewArtshow.description && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Description
+                    </h3>
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {previewArtshow.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-purple-50 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-purple-900">
+                      {previewArtshow.artistIds?.length || 0}
+                    </div>
+                    <div className="text-sm text-purple-700">Artists</div>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-orange-900">
+                      {previewArtshow.artworkIds?.length || 0}
+                    </div>
+                    <div className="text-sm text-orange-700">Artworks</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+                <button
+                  onClick={closePreview}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    closePreview();
+                    handleEdit(previewArtshow);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Edit Show
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

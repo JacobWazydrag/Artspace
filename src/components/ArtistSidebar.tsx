@@ -10,6 +10,7 @@ import {
   ArrowRightOnRectangleIcon,
   PlusCircleIcon,
   ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
 
@@ -33,7 +34,7 @@ const ArtistSidebar = () => {
   };
 
   return (
-    <div className="bg-gray-800 text-white w-64 min-h-screen p-4">
+    <div className="bg-gray-800 text-white w-64 min-h-screen p-4 flex flex-col">
       <div className="mb-8 flex items-center gap-3">
         <img
           src={logo}
@@ -42,7 +43,7 @@ const ArtistSidebar = () => {
         />
         <h1 className="text-2xl font-bold">ArtSpace</h1>
       </div>
-      <nav>
+      <nav className="flex-1">
         <ul className="space-y-2">
           <li>
             <Link
@@ -91,6 +92,27 @@ const ArtistSidebar = () => {
               </span>
             </Link>
           </li>
+        </ul>
+      </nav>
+
+      {/* Fixed bottom section */}
+      <div className="mt-auto pt-4 border-t border-gray-700">
+        <ul className="space-y-2">
+          <li>
+            <Link
+              to="/artist/settings"
+              className={`block px-4 py-2 rounded ${
+                isActive("/artist/settings")
+                  ? "bg-gray-900"
+                  : "hover:bg-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <Cog6ToothIcon className="w-5 h-5" />
+                Settings
+              </span>
+            </Link>
+          </li>
           <li>
             <button
               onClick={handleLogout}
@@ -104,7 +126,7 @@ const ArtistSidebar = () => {
             </button>
           </li>
         </ul>
-      </nav>
+      </div>
     </div>
   );
 };

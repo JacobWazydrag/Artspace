@@ -12,6 +12,7 @@ import { fetchMediums } from "../../features/mediumsSlice";
 import { toast } from "react-hot-toast";
 import ContentWrapper from "../../components/ContentWrapper";
 import { Artwork } from "../../types/artwork";
+import { NumericFormat } from "react-number-format";
 
 interface ImageGalleryProps {
   images: string[];
@@ -320,6 +321,19 @@ const UserArtworks = () => {
                     ? new Date(artwork.date).toLocaleDateString("en-US")
                     : ""}
                 </p>
+                {artwork.price && (
+                  <p className="text-gray-600 mb-2 font-medium">
+                    <NumericFormat
+                      value={artwork.price}
+                      thousandSeparator=","
+                      decimalSeparator="."
+                      prefix="$"
+                      decimalScale={2}
+                      fixedDecimalScale
+                      displayType="text"
+                    />
+                  </p>
+                )}
                 <p className="text-gray-700 mb-4">{artwork.description}</p>
 
                 {artwork.artshowId && (
@@ -330,7 +344,12 @@ const UserArtworks = () => {
 
                 <button
                   onClick={() => handleShowAssignment(artwork.id!)}
-                  className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                  disabled={currentUser.status !== "showing"}
+                  className={`text-sm font-medium ${
+                    currentUser.status === "showing"
+                      ? "text-indigo-600 hover:text-indigo-900"
+                      : "text-gray-400 cursor-not-allowed"
+                  }`}
                 >
                   {artwork.artshowId
                     ? "Change Show Assignment"

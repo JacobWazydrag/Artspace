@@ -30,6 +30,7 @@ import OnboardArt from "./pages/Artist/OnboardArt";
 import Store from "./pages/Store/Store";
 import ChatPage from "./pages/ChatPage";
 import Invitation from "./pages/Invitation/Invitation";
+import Settings from "./pages/Settings/Settings";
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "./firebase";
 import { fetchUserChats } from "./features/chatSlice";
@@ -120,6 +121,7 @@ const App = () => {
           >
             <Route index element={<Onboarding />} />
             <Route path="chat" element={<ChatPage />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* Waiting Approval Route */}
@@ -143,6 +145,7 @@ const App = () => {
             <Route path="artist/my-artwork" element={<MyArtwork />} />
             <Route path="artist/onboard-art" element={<OnboardArt />} />
             <Route path="artist/chat" element={<ChatPage />} />
+            <Route path="artist/settings" element={<Settings />} />
           </Route>
 
           {/* Admin Routes */}
@@ -164,6 +167,7 @@ const App = () => {
             <Route path="artworks" element={<Artworks />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="invitation" element={<Invitation />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* Redirect root to appropriate route based on role */}

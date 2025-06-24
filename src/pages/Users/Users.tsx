@@ -24,6 +24,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { toast } from "react-hot-toast";
+import { NumericFormat } from "react-number-format";
 
 interface FilterState {
   search: string;
@@ -881,7 +882,7 @@ const Users = () => {
                     )}
                     {columnVisibility.actions && (
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {user.role === "on-boarding" && (
+                        {user.status === "showing" && (
                           <button
                             onClick={() => handleAcceptIntoShow(user)}
                             className={`text-green-600 hover:text-green-900 mr-4 ${
@@ -1172,6 +1173,19 @@ const Users = () => {
                                       {artwork.medium} • {artwork.height}x
                                       {artwork.width} {artwork.uom}
                                     </p>
+                                    {artwork.price && (
+                                      <p className="text-xs text-gray-600 font-medium">
+                                        <NumericFormat
+                                          value={artwork.price}
+                                          thousandSeparator=","
+                                          decimalSeparator="."
+                                          prefix="$"
+                                          decimalScale={2}
+                                          fixedDecimalScale
+                                          displayType="text"
+                                        />
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                               </label>
