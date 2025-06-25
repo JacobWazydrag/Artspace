@@ -6,11 +6,12 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";
 import { toast } from "react-hot-toast";
 
-type TabType = "invitation" | "custom-message";
+type TabType = "invitation" | "custom-message" | "test";
 
 const Invitation = () => {
   const dispatch = useAppDispatch();
   const { data: users } = useAppSelector((state) => state.users);
+  const { user: currentUser } = useAppSelector((state) => state.auth);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>("invitation");
@@ -26,9 +27,31 @@ const Invitation = () => {
   const [htmlMessage, setHtmlMessage] = useState("");
   const [isCustomSubmitting, setIsCustomSubmitting] = useState(false);
 
+  // Test tab state
+  const [testFormData, setTestFormData] = useState({
+    from: "",
+    replyTo: "",
+    to: "",
+    toUids: [] as string[],
+    cc: "",
+    ccUids: [] as string[],
+    bcc: "",
+    bccUids: [] as string[],
+    messageId: "",
+    subject: "",
+    text: "",
+    html: "",
+    amp: "",
+    attachments: [] as any[],
+  });
+  const [isTestSubmitting, setIsTestSubmitting] = useState(false);
+
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  // Check if current user can access test tab
+  const canAccessTestTab = currentUser?.email === "jgw.jakegeorge@gmail.com";
 
   const handleInvitationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,6 +237,94 @@ const Invitation = () => {
     }
   };
 
+  const handleTestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testFormData.subject.trim()) {
+      toast.error("Please enter a subject");
+      return;
+    }
+    if (!testFormData.html.trim() && !testFormData.text.trim()) {
+      toast.error("Please enter either HTML or text content");
+      return;
+    }
+
+    setIsTestSubmitting(true);
+
+    try {
+      // Parse email addresses (support comma-separated)
+      const parseEmails = (emailString: string) => {
+        return emailString
+          .split(/[,\n]/)
+          .map((email) => email.trim())
+          .filter((email) => email.length > 0);
+      };
+
+      const mailData: any = {
+        message: {
+          subject: testFormData.subject,
+        },
+      };
+
+      // Add optional fields if provided
+      if (testFormData.from) mailData.from = testFormData.from;
+      if (testFormData.replyTo) mailData.replyTo = testFormData.replyTo;
+      if (testFormData.messageId) mailData.messageId = testFormData.messageId;
+      if (testFormData.text) mailData.message.text = testFormData.text;
+      if (testFormData.html) mailData.message.html = testFormData.html;
+      if (testFormData.amp) mailData.message.amp = testFormData.amp;
+      if (testFormData.attachments.length > 0)
+        mailData.message.attachments = testFormData.attachments;
+
+      // Add recipient fields
+      if (testFormData.to) {
+        const toEmails = parseEmails(testFormData.to);
+        if (toEmails.length > 0)
+          mailData.to = toEmails.length === 1 ? toEmails[0] : toEmails;
+      }
+      if (testFormData.toUids.length > 0) mailData.toUids = testFormData.toUids;
+      if (testFormData.cc) {
+        const ccEmails = parseEmails(testFormData.cc);
+        if (ccEmails.length > 0)
+          mailData.cc = ccEmails.length === 1 ? ccEmails[0] : ccEmails;
+      }
+      if (testFormData.ccUids.length > 0) mailData.ccUids = testFormData.ccUids;
+      if (testFormData.bcc) {
+        const bccEmails = parseEmails(testFormData.bcc);
+        if (bccEmails.length > 0)
+          mailData.bcc = bccEmails.length === 1 ? bccEmails[0] : bccEmails;
+      }
+      if (testFormData.bccUids.length > 0)
+        mailData.bccUids = testFormData.bccUids;
+
+      await dispatch(sendMail(mailData)).unwrap();
+
+      toast.success("Test email sent successfully!");
+
+      // Reset form
+      setTestFormData({
+        from: "",
+        replyTo: "",
+        to: "",
+        toUids: [],
+        cc: "",
+        ccUids: [],
+        bcc: "",
+        bccUids: [],
+        messageId: "",
+        subject: "",
+        text: "",
+        html: "",
+        amp: "",
+        attachments: [],
+      });
+    } catch (error) {
+      console.error("Error sending test email:", error);
+      toast.error("Failed to send test email. Please try again.");
+    } finally {
+      setIsTestSubmitting(false);
+    }
+  };
+
   const handleUserEmailToggle = (email: string) => {
     setSelectedUserEmails((prev) =>
       prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]
@@ -227,6 +338,25 @@ const Invitation = () => {
 
   const handleClearAllUsers = () => {
     setSelectedUserEmails([]);
+  };
+
+  const handleTestFormChange = (field: string, value: any) => {
+    setTestFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleUidToggle = (
+    field: "toUids" | "ccUids" | "bccUids",
+    uid: string
+  ) => {
+    setTestFormData((prev) => ({
+      ...prev,
+      [field]: prev[field].includes(uid)
+        ? prev[field].filter((id: string) => id !== uid)
+        : [...prev[field], uid],
+    }));
   };
 
   return (
@@ -257,6 +387,18 @@ const Invitation = () => {
             >
               Custom Message
             </button>
+            {canAccessTestTab && (
+              <button
+                onClick={() => setActiveTab("test")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "test"
+                    ? "border-purple-500 text-purple-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Test Email
+              </button>
+            )}
           </nav>
         </div>
 
@@ -463,6 +605,313 @@ const Invitation = () => {
                     </span>
                   ) : (
                     "Send Custom Message"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Test Tab */}
+        {activeTab === "test" && canAccessTestTab && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <form onSubmit={handleTestSubmit} className="space-y-6">
+              {/* Email Configuration Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    From Email
+                  </label>
+                  <input
+                    type="email"
+                    value={testFormData.from}
+                    onChange={(e) =>
+                      handleTestFormChange("from", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Leave empty to use default"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Uses default if not specified
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reply-To Email
+                  </label>
+                  <input
+                    type="email"
+                    value={testFormData.replyTo}
+                    onChange={(e) =>
+                      handleTestFormChange("replyTo", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Leave empty to use default"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Uses default if not specified
+                  </p>
+                </div>
+              </div>
+
+              {/* Recipients Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Recipients
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      To (Email Addresses)
+                    </label>
+                    <textarea
+                      value={testFormData.to}
+                      onChange={(e) =>
+                        handleTestFormChange("to", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="Enter email addresses (comma-separated)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      To (User IDs)
+                    </label>
+                    <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto">
+                      {users.map((user) => (
+                        <label
+                          key={user.id}
+                          className="flex items-center space-x-2 mb-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={testFormData.toUids.includes(
+                              user.id || ""
+                            )}
+                            onChange={() =>
+                              handleUidToggle("toUids", user.id || "")
+                            }
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <span className="text-sm text-gray-700">
+                            {user.name} ({user.id})
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CC (Email Addresses)
+                    </label>
+                    <textarea
+                      value={testFormData.cc}
+                      onChange={(e) =>
+                        handleTestFormChange("cc", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="Enter email addresses (comma-separated)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CC (User IDs)
+                    </label>
+                    <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto">
+                      {users.map((user) => (
+                        <label
+                          key={user.id}
+                          className="flex items-center space-x-2 mb-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={testFormData.ccUids.includes(
+                              user.id || ""
+                            )}
+                            onChange={() =>
+                              handleUidToggle("ccUids", user.id || "")
+                            }
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <span className="text-sm text-gray-700">
+                            {user.name} ({user.id})
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      BCC (Email Addresses)
+                    </label>
+                    <textarea
+                      value={testFormData.bcc}
+                      onChange={(e) =>
+                        handleTestFormChange("bcc", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="Enter email addresses (comma-separated)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      BCC (User IDs)
+                    </label>
+                    <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto">
+                      {users.map((user) => (
+                        <label
+                          key={user.id}
+                          className="flex items-center space-x-2 mb-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={testFormData.bccUids.includes(
+                              user.id || ""
+                            )}
+                            onChange={() =>
+                              handleUidToggle("bccUids", user.id || "")
+                            }
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <span className="text-sm text-gray-700">
+                            {user.name} ({user.id})
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Message Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Message</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Message ID
+                    </label>
+                    <input
+                      type="text"
+                      value={testFormData.messageId}
+                      onChange={(e) =>
+                        handleTestFormChange("messageId", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Optional message ID header"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Subject
+                    </label>
+                    <input
+                      type="text"
+                      value={testFormData.subject}
+                      onChange={(e) =>
+                        handleTestFormChange("subject", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Email subject (required)"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Plain Text Content
+                  </label>
+                  <textarea
+                    value={testFormData.text}
+                    onChange={(e) =>
+                      handleTestFormChange("text", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    rows={4}
+                    placeholder="Plain text version of the email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    HTML Content
+                  </label>
+                  <textarea
+                    value={testFormData.html}
+                    onChange={(e) =>
+                      handleTestFormChange("html", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+                    rows={6}
+                    placeholder="HTML version of the email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    AMP Content
+                  </label>
+                  <textarea
+                    value={testFormData.amp}
+                    onChange={(e) =>
+                      handleTestFormChange("amp", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+                    rows={4}
+                    placeholder="AMP4EMAIL content (optional)"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded-md p-4">
+                <h3 className="text-sm font-medium text-purple-800 mb-2">
+                  Test Email Features:
+                </h3>
+                <ul className="text-sm text-purple-700 space-y-1">
+                  <li>• Test all email configuration options</li>
+                  <li>
+                    • Support for multiple recipient types (email addresses and
+                    user IDs)
+                  </li>
+                  <li>• HTML, plain text, and AMP content support</li>
+                  <li>• Custom message ID and headers</li>
+                  <li>• Only visible to authorized users</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={
+                    isTestSubmitting ||
+                    !testFormData.subject.trim() ||
+                    (!testFormData.html.trim() && !testFormData.text.trim())
+                  }
+                  className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isTestSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Sending Test...
+                    </span>
+                  ) : (
+                    "Send Test Email"
                   )}
                 </button>
               </div>
