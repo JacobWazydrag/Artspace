@@ -38,6 +38,11 @@ export interface User {
   assignedLocations?: string[];
   interestInShow?: string;
   artshowId?: string;
+  shownAtArtspace?: boolean;
+  paymentInformation?: {
+    venmo?: string;
+    zelle?: string;
+  };
   notificationPreferences?: {
     email: { active: boolean; frequency: "daily" | "weekly" | "monthly" };
   };

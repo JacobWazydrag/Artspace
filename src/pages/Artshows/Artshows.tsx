@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import {
   collection,
@@ -37,28 +37,6 @@ interface FilterState {
   };
 }
 
-interface ColumnVisibility {
-  name: boolean;
-  dates: boolean;
-  location: boolean;
-  status: boolean;
-  artists: boolean;
-  artworks: boolean;
-  actions: boolean;
-  isExpanded: boolean;
-}
-
-const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
-  name: true,
-  dates: true,
-  location: true,
-  status: true,
-  artists: true,
-  artworks: true,
-  actions: true,
-  isExpanded: false,
-};
-
 const Artshows = () => {
   const dispatch = useAppDispatch();
   const {
@@ -94,14 +72,68 @@ const Artshows = () => {
       end: "",
     },
   });
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
-    () => {
-      const saved = localStorage.getItem("artshowsColumnVisibility");
-      return saved ? JSON.parse(saved) : DEFAULT_COLUMN_VISIBILITY;
-    }
-  );
   const [previewArtshow, setPreviewArtshow] = useState<Artshow | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // Dropdown state and refs
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
+  const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
+  const locationDropdownRef = useRef<HTMLDivElement>(null);
+  const dateDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Click outside handlers for dropdowns
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        statusDropdownRef.current &&
+        !statusDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsStatusDropdownOpen(false);
+      }
+    }
+    if (isStatusDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isStatusDropdownOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        locationDropdownRef.current &&
+        !locationDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsLocationDropdownOpen(false);
+      }
+    }
+    if (isLocationDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isLocationDropdownOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dateDropdownRef.current &&
+        !dateDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDateDropdownOpen(false);
+      }
+    }
+    if (isDateDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDateDropdownOpen]);
 
   const filteredArtshows = useMemo(() => {
     return artshows
@@ -150,13 +182,6 @@ const Artshows = () => {
     dispatch(fetchArtshows());
     dispatch(fetchLocations());
   }, [dispatch]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "artshowsColumnVisibility",
-      JSON.stringify(columnVisibility)
-    );
-  }, [columnVisibility]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -331,17 +356,6 @@ const Artshows = () => {
     setPreviewArtshow(null);
   };
 
-  const toggleColumn = (column: keyof ColumnVisibility) => {
-    setColumnVisibility((prev) => ({
-      ...prev,
-      [column]: !prev[column],
-    }));
-  };
-
-  const resetColumnVisibility = () => {
-    setColumnVisibility(DEFAULT_COLUMN_VISIBILITY);
-  };
-
   if (error) {
     return (
       <div className="p-8">
@@ -378,71 +392,6 @@ const Artshows = () => {
           >
             Add New Show
           </button>
-        </div>
-
-        {/* Collapsible Column Visibility Controls */}
-        <div className="mb-4">
-          <button
-            onClick={() =>
-              setColumnVisibility((prev) => ({
-                ...prev,
-                isExpanded: !prev.isExpanded,
-              }))
-            }
-            className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-          >
-            <svg
-              className={`w-4 h-4 mr-2 transform transition-transform ${
-                columnVisibility.isExpanded ? "rotate-90" : ""
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-            Column Visibility
-          </button>
-
-          {columnVisibility.isExpanded && (
-            <div className="mt-2 p-4 bg-white rounded-lg shadow">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Visible Columns
-                </h3>
-                <button
-                  onClick={resetColumnVisibility}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  Reset to Default
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(columnVisibility)
-                  .filter(([key]) => key !== "isExpanded")
-                  .map(([key, isVisible]) => (
-                    <button
-                      key={key}
-                      onClick={() =>
-                        toggleColumn(key as keyof ColumnVisibility)
-                      }
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        isVisible
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {key.charAt(0).toUpperCase() + key.slice(1)}
-                    </button>
-                  ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Art Show Form Modal */}
@@ -679,15 +628,11 @@ const Artshows = () => {
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Status Filter */}
-              <div className="relative">
+              <div className="relative" ref={statusDropdownRef}>
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("status-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsStatusDropdownOpen((open) => !open)}
                 >
                   Status
                   <svg
@@ -706,45 +651,40 @@ const Artshows = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="status-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    {["active", "inactive", "closed"].map((status) => (
-                      <li key={status}>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.statuses.includes(status)}
-                            onChange={(e) => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                statuses: e.target.checked
-                                  ? [...prev.statuses, status]
-                                  : prev.statuses.filter((s) => s !== status),
-                              }));
-                            }}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2 capitalize">{status}</span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {isStatusDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {["active", "inactive", "closed"].map((status) => (
+                        <li key={status}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.statuses.includes(status)}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  statuses: e.target.checked
+                                    ? [...prev.statuses, status]
+                                    : prev.statuses.filter((s) => s !== status),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2 capitalize">{status}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Location Filter */}
-              <div className="relative">
+              <div className="relative" ref={locationDropdownRef}>
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("location-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsLocationDropdownOpen((open) => !open)}
                 >
                   Location
                   <svg
@@ -763,47 +703,42 @@ const Artshows = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="location-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    {locations?.map((location) => (
-                      <li key={location.id}>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.locations.includes(location.id!)}
-                            onChange={(e) => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                locations: e.target.checked
-                                  ? [...prev.locations, location.id!]
-                                  : prev.locations.filter(
-                                      (id) => id !== location.id
-                                    ),
-                              }));
-                            }}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2">{location.name}</span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {isLocationDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {locations?.map((location) => (
+                        <li key={location.id}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.locations.includes(location.id!)}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  locations: e.target.checked
+                                    ? [...prev.locations, location.id!]
+                                    : prev.locations.filter(
+                                        (id) => id !== location.id
+                                      ),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2">{location.name}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Date Range Filter */}
-              <div className="relative">
+              <div className="relative" ref={dateDropdownRef}>
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("date-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsDateDropdownOpen((open) => !open)}
                 >
                   Date Range
                   <svg
@@ -822,51 +757,50 @@ const Artshows = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="date-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow p-4"
-                >
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Start Date
-                      </label>
-                      <input
-                        type="date"
-                        value={filters.dateRange.start}
-                        onChange={(e) =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            dateRange: {
-                              ...prev.dateRange,
-                              start: e.target.value,
-                            },
-                          }))
-                        }
-                        className="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        End Date
-                      </label>
-                      <input
-                        type="date"
-                        value={filters.dateRange.end}
-                        onChange={(e) =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            dateRange: {
-                              ...prev.dateRange,
-                              end: e.target.value,
-                            },
-                          }))
-                        }
-                        className="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      />
+                {isDateDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow p-4">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Start Date
+                        </label>
+                        <input
+                          type="date"
+                          value={filters.dateRange.start}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              dateRange: {
+                                ...prev.dateRange,
+                                start: e.target.value,
+                              },
+                            }))
+                          }
+                          className="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          End Date
+                        </label>
+                        <input
+                          type="date"
+                          value={filters.dateRange.end}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              dateRange: {
+                                ...prev.dateRange,
+                                end: e.target.value,
+                              },
+                            }))
+                          }
+                          className="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -970,10 +904,10 @@ const Artshows = () => {
           )}
         </div>
 
-        {/* Art Shows Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        {/* Art Shows Card Grid */}
+        <div className="max-w-7xl mx-auto">
           {filteredArtshows.length === 0 ? (
-            <div className="p-8 text-center">
+            <div className="bg-white rounded-lg shadow p-8 text-center">
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 No Art Shows Found
               </h3>
@@ -992,158 +926,164 @@ const Artshows = () => {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {columnVisibility.name && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              {filteredArtshows.map((artshow: Artshow) => (
+                <div
+                  key={artshow.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200"
+                >
+                  {/* Image */}
+                  <div className="aspect-video bg-gray-200 relative">
+                    {artshow.photoUrl ? (
+                      <img
+                        src={artshow.photoUrl}
+                        alt={artshow.name}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <svg
+                          className="w-12 h-12"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                          />
+                        </svg>
+                      </div>
                     )}
-                    {columnVisibility.dates && (
-                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Dates
-                      </th>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-4">
+                    {/* Title */}
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                      {artshow.name}
+                    </h3>
+                    {artshow.subTitle && (
+                      <p className="text-sm text-gray-600 mb-3 italic">
+                        {artshow.subTitle}
+                      </p>
                     )}
-                    {columnVisibility.location && (
-                      <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Location
-                      </th>
-                    )}
-                    {columnVisibility.status && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                    )}
-                    {columnVisibility.artists && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Artists
-                      </th>
-                    )}
-                    {columnVisibility.artworks && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Artworks
-                      </th>
-                    )}
-                    {columnVisibility.actions && (
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredArtshows.map((artshow: Artshow) => (
-                    <tr key={artshow.id}>
-                      {columnVisibility.name && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {artshow.name}
-                          </div>
-                          {columnVisibility.dates && (
-                            <div className="text-sm text-gray-500 md:hidden">
-                              {new Date(
-                                artshow.startDate + "T00:00:00"
-                              ).toLocaleDateString()}{" "}
-                              -{" "}
-                              {new Date(
-                                artshow.endDate + "T00:00:00"
-                              ).toLocaleDateString()}
-                            </div>
-                          )}
-                        </td>
-                      )}
-                      {columnVisibility.dates && (
-                        <td className="hidden md:table-cell px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {new Date(
-                              artshow.startDate + "T00:00:00"
-                            ).toLocaleDateString()}{" "}
-                            -{" "}
-                            {new Date(
-                              artshow.endDate + "T00:00:00"
-                            ).toLocaleDateString()}
-                          </div>
-                        </td>
-                      )}
-                      {columnVisibility.location && (
-                        <td className="hidden md:table-cell px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {locations?.find(
-                              (loc) => loc.id === artshow.locationId
-                            )?.name || "-"}
-                          </div>
-                        </td>
-                      )}
-                      {columnVisibility.status && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              artshow.status === "active"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
+
+                    {/* Status Badge */}
+                    <div className="mb-3">
+                      <span
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          artshow.status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : artshow.status === "closed"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {artshow.status}
+                      </span>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="text-sm text-gray-600 mb-3">
+                      <div className="flex items-center gap-1 mb-1">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                        <span className="font-medium">Dates:</span>
+                      </div>
+                      <div className="pl-5">
+                        {new Date(
+                          artshow.startDate + "T00:00:00"
+                        ).toLocaleDateString()}{" "}
+                        -{" "}
+                        {new Date(
+                          artshow.endDate + "T00:00:00"
+                        ).toLocaleDateString()}
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div className="text-sm text-gray-600 mb-4">
+                      <div className="flex items-center gap-1 mb-1">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                        <span className="font-medium">Location:</span>
+                      </div>
+                      <div className="pl-5">
+                        {locations?.find((loc) => loc.id === artshow.locationId)
+                          ?.name || "Not specified"}
+                      </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="flex justify-between text-sm text-gray-500 mb-4">
+                      <span>{artshow.artistIds?.length || 0} artists</span>
+                      <span>{artshow.artworkIds?.length || 0} artworks</span>
+                    </div>
+
+                    {/* Actions */}
+                    {artshow.status !== "closed" && (
+                      <div className="flex flex-col space-y-2">
+                        <button
+                          onClick={() => handlePreview(artshow)}
+                          className="w-full text-center text-orange-600 hover:text-orange-900 font-medium text-sm py-1 border border-orange-200 rounded hover:bg-orange-50 transition-colors"
+                          disabled={isSubmitting}
+                        >
+                          Preview
+                        </button>
+                        {artshow.status === "active" && (
+                          <button
+                            onClick={() =>
+                              artshow.id && handleCloseShow(artshow.id)
+                            }
+                            className="w-full text-center text-yellow-600 hover:text-yellow-900 font-medium text-sm py-1 border border-yellow-200 rounded hover:bg-yellow-50 transition-colors"
+                            disabled={isSubmitting}
                           >
-                            {artshow.status}
-                          </span>
-                        </td>
-                      )}
-                      {columnVisibility.artists && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Link
-                            to={`/artshows/${artshow.id}/artists`}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            {artshow.artistIds?.length || 0} artists
-                          </Link>
-                        </td>
-                      )}
-                      {columnVisibility.artworks && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Link
-                            to={`/artshows/${artshow.id}/artworks`}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            {artshow.artworkIds?.length || 0} artworks
-                          </Link>
-                        </td>
-                      )}
-                      {columnVisibility.actions && (
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex flex-col space-y-2">
-                            <button
-                              onClick={() => handlePreview(artshow)}
-                              className="text-orange-600 hover:text-orange-900"
-                              disabled={isSubmitting}
-                            >
-                              Preview
-                            </button>
-                            {artshow.status === "active" && (
-                              <button
-                                onClick={() =>
-                                  artshow.id && handleCloseShow(artshow.id)
-                                }
-                                className="text-yellow-600 hover:text-yellow-900"
-                                disabled={isSubmitting}
-                              >
-                                Close Show
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleEdit(artshow)}
-                              className="text-blue-600 hover:text-blue-900"
-                              disabled={isSubmitting}
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            Close Show
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleEdit(artshow)}
+                          className="w-full text-center text-blue-600 hover:text-blue-900 font-medium text-sm py-1 border border-blue-200 rounded hover:bg-blue-50 transition-colors"
+                          disabled={isSubmitting}
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

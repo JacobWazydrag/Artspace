@@ -243,8 +243,14 @@ const Invitation = () => {
       toast.error("Please enter a subject");
       return;
     }
-    if (!testFormData.html.trim() && !testFormData.text.trim()) {
-      toast.error("Please enter either HTML or text content");
+    if (
+      !testFormData.html.trim() &&
+      !testFormData.text.trim() &&
+      !testFormData.amp.trim()
+    ) {
+      toast.error(
+        "Please enter at least one content type: plain text, HTML, or AMP"
+      );
       return;
     }
 
@@ -901,7 +907,9 @@ const Invitation = () => {
                   disabled={
                     isTestSubmitting ||
                     !testFormData.subject.trim() ||
-                    (!testFormData.html.trim() && !testFormData.text.trim())
+                    (!testFormData.html.trim() &&
+                      !testFormData.text.trim() &&
+                      !testFormData.amp.trim())
                   }
                   className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

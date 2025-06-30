@@ -26,6 +26,7 @@ export interface Artshow {
   status: "active" | "inactive" | "closed";
   artistIds?: string[];
   artworkIds?: string[];
+  artworkOrder?: string[];
 }
 
 interface ArtshowsState {

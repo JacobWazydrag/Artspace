@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftRightIcon,
   EnvelopeIcon,
   Cog6ToothIcon,
+  AdjustmentsHorizontalIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
 
@@ -111,7 +112,7 @@ const Sidebar = () => {
             >
               <span className="flex items-center gap-3">
                 <UsersIcon className="w-5 h-5" />
-                Users
+                Artists
               </span>
             </Link>
           </li>
@@ -125,6 +126,19 @@ const Sidebar = () => {
               <span className="flex items-center gap-3">
                 <PaintBrushIcon className="w-5 h-5" />
                 Artworks
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/curate"
+              className={`block px-4 py-2 rounded ${
+                isActive("/curate") ? "bg-gray-900" : "hover:bg-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                Curate
               </span>
             </Link>
           </li>

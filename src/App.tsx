@@ -31,9 +31,11 @@ import Store from "./pages/Store/Store";
 import ChatPage from "./pages/ChatPage";
 import Invitation from "./pages/Invitation/Invitation";
 import Settings from "./pages/Settings/Settings";
+import Curate from "./pages/Curate/Curate";
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "./firebase";
 import { fetchUserChats } from "./features/chatSlice";
+import PublicArtshowArtworks from "./pages/PublicArtshow/PublicArtshowArtworks";
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -106,6 +108,7 @@ const App = () => {
         {/* Public Routes */}
         <Route path="/auth" element={<Auth />} />
         <Route path="/artshow" element={<PublicArtshow />} />
+        <Route path="/artshow-artworks" element={<PublicArtshowArtworks />} />
         <Route path="/store" element={<Store />} />
 
         {/* Protected Routes */}
@@ -165,6 +168,7 @@ const App = () => {
             <Route path="users" element={<Users />} />
             <Route path="users/:userId/artworks" element={<UserArtworks />} />
             <Route path="artworks" element={<Artworks />} />
+            <Route path="curate" element={<Curate />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="invitation" element={<Invitation />} />
             <Route path="settings" element={<Settings />} />

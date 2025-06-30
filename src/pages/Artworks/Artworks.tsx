@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import {
   fetchAllArtworks,
@@ -22,38 +22,6 @@ interface FilterState {
   mediums: string[];
   priceRange: string;
 }
-
-interface ColumnVisibility {
-  image: boolean;
-  title: boolean;
-  medium: boolean;
-  dimensions: boolean;
-  price: boolean;
-  lastUpdated: boolean;
-  description: boolean;
-  artist: boolean;
-  images: boolean;
-  showStatus: boolean;
-  previousShows: boolean;
-  actions: boolean;
-  isExpanded: boolean;
-}
-
-const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
-  image: true,
-  title: true,
-  medium: true,
-  dimensions: true,
-  price: true,
-  lastUpdated: false,
-  description: false,
-  artist: true,
-  images: false,
-  showStatus: false,
-  previousShows: false,
-  actions: false,
-  isExpanded: false,
-};
 
 interface ImageGalleryProps {
   images: string[];
@@ -185,12 +153,6 @@ const Artworks = () => {
     mediums: [],
     priceRange: "",
   });
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
-    () => {
-      const saved = localStorage.getItem("artworksColumnVisibility");
-      return saved ? JSON.parse(saved) : DEFAULT_COLUMN_VISIBILITY;
-    }
-  );
   const [selectedArtwork, setSelectedArtwork] = useState<{
     images: string[];
     index: number;
@@ -207,6 +169,19 @@ const Artworks = () => {
     open: false,
     text: "",
   });
+  const [previewArtwork, setPreviewArtwork] = useState<any | null>(null);
+  const [isShowStatusDropdownOpen, setIsShowStatusDropdownOpen] =
+    useState(false);
+  const [isArtistDropdownOpen, setIsArtistDropdownOpen] = useState(false);
+  const [isShowsDropdownOpen, setIsShowsDropdownOpen] = useState(false);
+  const [isMediumDropdownOpen, setIsMediumDropdownOpen] = useState(false);
+  const [isPriceRangeDropdownOpen, setIsPriceRangeDropdownOpen] =
+    useState(false);
+  const showStatusDropdownRef = useRef<HTMLDivElement>(null);
+  const artistDropdownRef = useRef<HTMLDivElement>(null);
+  const showsDropdownRef = useRef<HTMLDivElement>(null);
+  const mediumDropdownRef = useRef<HTMLDivElement>(null);
+  const priceRangeDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     dispatch(fetchAllArtworks());
@@ -217,11 +192,89 @@ const Artworks = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "artworksColumnVisibility",
-      JSON.stringify(columnVisibility)
-    );
-  }, [columnVisibility]);
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        showStatusDropdownRef.current &&
+        !showStatusDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsShowStatusDropdownOpen(false);
+      }
+    }
+    if (isShowStatusDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isShowStatusDropdownOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        artistDropdownRef.current &&
+        !artistDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsArtistDropdownOpen(false);
+      }
+    }
+    if (isArtistDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isArtistDropdownOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        showsDropdownRef.current &&
+        !showsDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsShowsDropdownOpen(false);
+      }
+    }
+    if (isShowsDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isShowsDropdownOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        mediumDropdownRef.current &&
+        !mediumDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsMediumDropdownOpen(false);
+      }
+    }
+    if (isMediumDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMediumDropdownOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        priceRangeDropdownRef.current &&
+        !priceRangeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsPriceRangeDropdownOpen(false);
+      }
+    }
+    if (isPriceRangeDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isPriceRangeDropdownOpen]);
 
   const filteredArtworks = artworks.filter((artwork) => {
     if (
@@ -334,88 +387,12 @@ const Artworks = () => {
     }
   };
 
-  const toggleColumn = (column: keyof ColumnVisibility) => {
-    setColumnVisibility((prev) => ({
-      ...prev,
-      [column]: !prev[column],
-    }));
-  };
-
-  const resetColumnVisibility = () => {
-    setColumnVisibility(DEFAULT_COLUMN_VISIBILITY);
-  };
-
   return (
     <div className="p-8">
       <ContentWrapper loading={loading}>
         <div className="mb-8">
           <h1 className={h1ReverseDark}>Artworks</h1>
           <p className="text-gray-600">Manage and view all artworks</p>
-        </div>
-
-        {/* Collapsible Column Visibility Controls */}
-        <div className="mb-4">
-          <button
-            onClick={() =>
-              setColumnVisibility((prev) => ({
-                ...prev,
-                isExpanded: !prev.isExpanded,
-              }))
-            }
-            className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-          >
-            <svg
-              className={`w-4 h-4 mr-2 transform transition-transform ${
-                columnVisibility.isExpanded ? "rotate-90" : ""
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-            Column Visibility
-          </button>
-
-          {columnVisibility.isExpanded && (
-            <div className="mt-2 p-4 bg-white rounded-lg shadow">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Visible Columns
-                </h3>
-                <button
-                  onClick={resetColumnVisibility}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  Reset to Default
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(columnVisibility)
-                  .filter(([key]) => key !== "isExpanded")
-                  .map(([key, isVisible]) => (
-                    <button
-                      key={key}
-                      onClick={() =>
-                        toggleColumn(key as keyof ColumnVisibility)
-                      }
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        isVisible
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {key.charAt(0).toUpperCase() + key.slice(1)}
-                    </button>
-                  ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Search and Filters */}
@@ -459,15 +436,14 @@ const Artworks = () => {
             {/* Filters */}
             <div className="flex flex-wrap gap-4">
               {/* Show Status Filter */}
-              <div className="relative flex-1 min-w-[200px]">
+              <div
+                className="relative flex-1 min-w-[200px]"
+                ref={showStatusDropdownRef}
+              >
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("show-status-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsShowStatusDropdownOpen((open) => !open)}
                 >
                   Show Status
                   <svg
@@ -486,47 +462,45 @@ const Artworks = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="show-status-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    {["accepted", "rejected"].map((status) => (
-                      <li key={status}>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.showStatuses.includes(status)}
-                            onChange={(e) => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                showStatuses: e.target.checked
-                                  ? [...prev.showStatuses, status]
-                                  : prev.showStatuses.filter(
-                                      (s) => s !== status
-                                    ),
-                              }));
-                            }}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2 capitalize">{status}</span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {isShowStatusDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {["accepted", "rejected"].map((status) => (
+                        <li key={status}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.showStatuses.includes(status)}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  showStatuses: e.target.checked
+                                    ? [...prev.showStatuses, status]
+                                    : prev.showStatuses.filter(
+                                        (s) => s !== status
+                                      ),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2 capitalize">{status}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Artist Filter */}
-              <div className="relative flex-1 min-w-[200px]">
+              <div
+                className="relative flex-1 min-w-[200px]"
+                ref={artistDropdownRef}
+              >
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("artist-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsArtistDropdownOpen((open) => !open)}
                 >
                   Artist
                   <svg
@@ -545,45 +519,45 @@ const Artworks = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="artist-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    {users?.map((user) => (
-                      <li key={user.id}>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.artists.includes(user.id!)}
-                            onChange={(e) => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                artists: e.target.checked
-                                  ? [...prev.artists, user.id!]
-                                  : prev.artists.filter((id) => id !== user.id),
-                              }));
-                            }}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2">{user.name}</span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {isArtistDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {users?.map((user) => (
+                        <li key={user.id}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.artists.includes(user.id!)}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  artists: e.target.checked
+                                    ? [...prev.artists, user.id!]
+                                    : prev.artists.filter(
+                                        (id) => id !== user.id
+                                      ),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2">{user.name}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Shows Filter */}
-              <div className="relative flex-1 min-w-[200px]">
+              <div
+                className="relative flex-1 min-w-[200px]"
+                ref={showsDropdownRef}
+              >
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("shows-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsShowsDropdownOpen((open) => !open)}
                 >
                   Previous Shows
                   <svg
@@ -602,45 +576,43 @@ const Artworks = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="shows-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    {artshows?.map((show) => (
-                      <li key={show.id}>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.shows.includes(show.id!)}
-                            onChange={(e) => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                shows: e.target.checked
-                                  ? [...prev.shows, show.id!]
-                                  : prev.shows.filter((id) => id !== show.id),
-                              }));
-                            }}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2">{show.name}</span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {isShowsDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {artshows?.map((show) => (
+                        <li key={show.id}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.shows.includes(show.id!)}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  shows: e.target.checked
+                                    ? [...prev.shows, show.id!]
+                                    : prev.shows.filter((id) => id !== show.id),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2">{show.name}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Medium Filter */}
-              <div className="relative flex-1 min-w-[200px]">
+              <div
+                className="relative flex-1 min-w-[200px]"
+                ref={mediumDropdownRef}
+              >
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("medium-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsMediumDropdownOpen((open) => !open)}
                 >
                   Medium
                   <svg
@@ -659,47 +631,45 @@ const Artworks = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="medium-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    {mediums?.map((medium) => (
-                      <li key={medium.id}>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.mediums.includes(medium.id!)}
-                            onChange={(e) => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                mediums: e.target.checked
-                                  ? [...prev.mediums, medium.id!]
-                                  : prev.mediums.filter(
-                                      (id) => id !== medium.id
-                                    ),
-                              }));
-                            }}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2">{medium.name}</span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {isMediumDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {mediums?.map((medium) => (
+                        <li key={medium.id}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.mediums.includes(medium.id!)}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  mediums: e.target.checked
+                                    ? [...prev.mediums, medium.id!]
+                                    : prev.mediums.filter(
+                                        (id) => id !== medium.id
+                                      ),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2">{medium.name}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Price Range Filter */}
-              <div className="relative flex-1 min-w-[200px]">
+              <div
+                className="relative flex-1 min-w-[200px]"
+                ref={priceRangeDropdownRef}
+              >
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("price-range-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsPriceRangeDropdownOpen((open) => !open)}
                 >
                   Price Range
                   <svg
@@ -718,115 +688,114 @@ const Artworks = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="price-range-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    <li>
-                      <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="priceRange"
-                          checked={filters.priceRange === ""}
-                          onChange={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              priceRange: "",
-                            }))
-                          }
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                        />
-                        <span className="ml-2">Any Price</span>
-                      </label>
-                    </li>
-                    <li>
-                      <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="priceRange"
-                          checked={filters.priceRange === "0-49"}
-                          onChange={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              priceRange: "0-49",
-                            }))
-                          }
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                        />
-                        <span className="ml-2">Under $50</span>
-                      </label>
-                    </li>
-                    <li>
-                      <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="priceRange"
-                          checked={filters.priceRange === "50-149"}
-                          onChange={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              priceRange: "50-149",
-                            }))
-                          }
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                        />
-                        <span className="ml-2">$50 - $149</span>
-                      </label>
-                    </li>
-                    <li>
-                      <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="priceRange"
-                          checked={filters.priceRange === "150-499"}
-                          onChange={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              priceRange: "150-499",
-                            }))
-                          }
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                        />
-                        <span className="ml-2">$150 - $499</span>
-                      </label>
-                    </li>
-                    <li>
-                      <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="priceRange"
-                          checked={filters.priceRange === "500-999"}
-                          onChange={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              priceRange: "500-999",
-                            }))
-                          }
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                        />
-                        <span className="ml-2">$500 - $999</span>
-                      </label>
-                    </li>
-                    <li>
-                      <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="priceRange"
-                          checked={filters.priceRange === "1000"}
-                          onChange={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              priceRange: "1000",
-                            }))
-                          }
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                        />
-                        <span className="ml-2">$1,000+</span>
-                      </label>
-                    </li>
-                  </ul>
-                </div>
+                {isPriceRangeDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                    <ul className="py-2 text-sm text-gray-700">
+                      <li>
+                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="priceRange"
+                            checked={filters.priceRange === ""}
+                            onChange={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                priceRange: "",
+                              }))
+                            }
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                          />
+                          <span className="ml-2">Any Price</span>
+                        </label>
+                      </li>
+                      <li>
+                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="priceRange"
+                            checked={filters.priceRange === "0-49"}
+                            onChange={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                priceRange: "0-49",
+                              }))
+                            }
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                          />
+                          <span className="ml-2">Under $50</span>
+                        </label>
+                      </li>
+                      <li>
+                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="priceRange"
+                            checked={filters.priceRange === "50-149"}
+                            onChange={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                priceRange: "50-149",
+                              }))
+                            }
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                          />
+                          <span className="ml-2">$50 - $149</span>
+                        </label>
+                      </li>
+                      <li>
+                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="priceRange"
+                            checked={filters.priceRange === "150-499"}
+                            onChange={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                priceRange: "150-499",
+                              }))
+                            }
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                          />
+                          <span className="ml-2">$150 - $499</span>
+                        </label>
+                      </li>
+                      <li>
+                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="priceRange"
+                            checked={filters.priceRange === "500-999"}
+                            onChange={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                priceRange: "500-999",
+                              }))
+                            }
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                          />
+                          <span className="ml-2">$500 - $999</span>
+                        </label>
+                      </li>
+                      <li>
+                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="priceRange"
+                            checked={filters.priceRange === "1000"}
+                            onChange={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                priceRange: "1000",
+                              }))
+                            }
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                          />
+                          <span className="ml-2">$1,000+</span>
+                        </label>
+                      </li>
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -987,415 +956,236 @@ const Artworks = () => {
           </div>
         </div>
 
-        {/* Artworks Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {filteredArtworks.length === 0 ? (
-            <div className="p-8 text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+        {/* Artworks Card Grid */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
+            {filteredArtworks.length === 0 ? (
+              <div className="col-span-full text-center text-gray-500">
                 No Artworks Found
-              </h3>
-              <p className="text-gray-500 mb-4">
-                {artworks.length === 0
-                  ? "There are no artworks in the system yet."
-                  : "No artworks match your current filters."}
-              </p>
-              {artworks.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  Artworks will appear here once artists upload them.
-                </p>
-              ) : (
-                <button
-                  onClick={() =>
-                    setFilters({
-                      search: "",
-                      showStatuses: [],
-                      artists: [],
-                      shows: [],
-                      mediums: [],
-                      priceRange: "",
-                    })
-                  }
-                  className="text-sm text-indigo-600 hover:text-indigo-900"
-                >
-                  Clear all filters
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {columnVisibility.image && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Image
-                      </th>
-                    )}
-                    {columnVisibility.title && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Title
-                      </th>
-                    )}
-                    {columnVisibility.medium && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Medium
-                      </th>
-                    )}
-                    {columnVisibility.dimensions && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Dimensions
-                      </th>
-                    )}
-                    {columnVisibility.price && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Price
-                      </th>
-                    )}
-                    {columnVisibility.lastUpdated && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Last Updated
-                      </th>
-                    )}
-                    {columnVisibility.description && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Description
-                      </th>
-                    )}
-                    {columnVisibility.artist && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Artist
-                      </th>
-                    )}
-                    {columnVisibility.images && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Images
-                      </th>
-                    )}
-                    {columnVisibility.showStatus && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Show Status
-                      </th>
-                    )}
-                    {columnVisibility.previousShows && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Previous Shows
-                      </th>
-                    )}
-                    {columnVisibility.actions && (
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Actions
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredArtworks.map((artwork) => (
-                    <tr key={artwork.id}>
-                      {columnVisibility.image && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            {artwork.images && artwork.images.length > 0 ? (
-                              <img
-                                src={artwork.images[0]}
-                                alt={artwork.title}
-                                className="h-10 w-10 rounded-full object-cover cursor-pointer hover:opacity-75 transition-opacity"
-                                onClick={() =>
-                                  setSelectedArtwork({
-                                    images: artwork.images,
-                                    index: 0,
-                                  })
-                                }
-                              />
-                            ) : (
-                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                <span className="text-gray-400 text-xs">
-                                  No image
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
+              </div>
+            ) : (
+              filteredArtworks.map((artwork) => {
+                const artist = getArtistInfo(artwork.artistId);
+                return (
+                  <div
+                    key={artwork.id}
+                    className="bg-white rounded-lg shadow p-6 flex flex-col items-center w-full max-w-md lg:max-w-lg"
+                  >
+                    <div className="w-full flex justify-center mb-3">
+                      {artwork.images && artwork.images.length > 0 ? (
+                        <img
+                          src={artwork.images[0]}
+                          alt={artwork.title}
+                          className="h-40 w-40 object-cover rounded-lg shadow"
+                        />
+                      ) : (
+                        <div className="h-40 w-40 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400">
+                          No image
+                        </div>
                       )}
-                      {columnVisibility.title && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {artwork.title}
-                          </div>
-                        </td>
-                      )}
-                      {columnVisibility.medium && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {getMediumName(artwork.medium)}
-                          </div>
-                        </td>
-                      )}
-                      {columnVisibility.dimensions && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {artwork.height} x {artwork.width} {artwork.uom}
-                          </div>
-                        </td>
-                      )}
-                      {columnVisibility.price && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {artwork.price ? (
-                              <NumericFormat
-                                value={artwork.price}
-                                thousandSeparator=","
-                                decimalSeparator="."
-                                prefix="$"
-                                decimalScale={2}
-                                fixedDecimalScale
-                                displayType="text"
-                              />
-                            ) : (
-                              "Price not available"
-                            )}
-                          </div>
-                        </td>
-                      )}
-                      {columnVisibility.lastUpdated && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {new Date(artwork.updatedAt).toLocaleDateString()}
-                          </div>
-                        </td>
-                      )}
-                      {columnVisibility.description && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            className="text-sm text-blue-600 hover:underline focus:outline-none"
-                            onClick={() =>
-                              setDescModal({
-                                open: true,
-                                text: artwork.description,
-                              })
-                            }
-                          >
-                            {artwork.description &&
-                            artwork.description.length > 10
-                              ? artwork.description.slice(0, 10) + "..."
-                              : artwork.description || "-"}
-                          </button>
-                        </td>
-                      )}
-                      {columnVisibility.artist && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {getArtistInfo(artwork.artistId)?.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {getArtistInfo(artwork.artistId)?.email}
-                          </div>
-                        </td>
-                      )}
-                      {columnVisibility.images && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() =>
-                              setSelectedArtwork({
-                                images: artwork.images,
-                                index: 0,
-                              })
-                            }
-                            className="text-sm text-indigo-600 hover:text-indigo-900"
-                          >
-                            {artwork.images.length} images
-                          </button>
-                        </td>
-                      )}
-                      {columnVisibility.showStatus && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {artwork.showStatus ? (
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                artwork.showStatus === "accepted"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {artwork.showStatus}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-gray-500">
-                              Not in Show
-                            </span>
-                          )}
-                        </td>
-                      )}
-                      {columnVisibility.previousShows && (
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-wrap gap-1">
-                            {artwork.beenInShows?.map((showId) => {
-                              const show = artshows?.find(
-                                (s) => s.id === showId
-                              );
-                              return (
-                                <span
-                                  key={showId}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
-                                >
-                                  {show?.name}
-                                </span>
-                              );
-                            })}
-                            {(!artwork.beenInShows ||
-                              artwork.beenInShows.length === 0) && (
-                              <span className="text-sm text-gray-500">
-                                No previous shows
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                      {columnVisibility.actions && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => handleShowAssignment(artwork.id!)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            {artwork.artshowId
-                              ? "Change Show Assignment"
-                              : "Assign to Show"}
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                    </div>
+                    <div className="text-lg font-semibold text-gray-900 text-center mb-1">
+                      {artwork.title}
+                    </div>
+                    {artist && (
+                      <>
+                        <div className="text-sm text-gray-700 text-center">
+                          {artist.name}
+                        </div>
+                        <div className="text-xs text-gray-500 text-center mb-2">
+                          {artist.email}
+                        </div>
+                      </>
+                    )}
+                    <button
+                      onClick={() => setPreviewArtwork(artwork)}
+                      className="text-blue-600 hover:text-blue-900 w-full mt-2"
+                    >
+                      Preview
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
 
-        {/* Image Gallery Modal */}
-        {selectedArtwork && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <div className="relative">
-                  <img
-                    src={selectedArtwork.images[selectedArtwork.index]}
-                    alt="Selected artwork"
-                    className="w-full h-auto rounded-lg"
-                  />
-                  {selectedArtwork.images.length > 1 && (
-                    <>
-                      <button
-                        onClick={() =>
-                          setSelectedArtwork((prev) => ({
-                            ...prev!,
-                            index:
-                              (prev!.index - 1 + prev!.images.length) %
-                              prev!.images.length,
-                          }))
-                        }
-                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100"
-                      >
-                        <svg
-                          className="w-6 h-6 text-gray-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() =>
-                          setSelectedArtwork((prev) => ({
-                            ...prev!,
-                            index: (prev!.index + 1) % prev!.images.length,
-                          }))
-                        }
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100"
-                      >
-                        <svg
-                          className="w-6 h-6 text-gray-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => setSelectedArtwork(null)}
-                    className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100"
-                  >
-                    <svg
-                      className="w-6 h-6 text-gray-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+        {/* Preview Modal */}
+        {previewArtwork &&
+          (() => {
+            const artist = getArtistInfo(previewArtwork.artistId);
+            return (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center">
+                <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl max-h-[90vh] shadow-lg rounded-md bg-white overflow-y-auto">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Artwork Preview
+                    </h3>
+                    <button
+                      onClick={() => setPreviewArtwork(null)}
+                      className="text-gray-400 hover:text-gray-600"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-                <div className="mt-2 text-center text-sm text-gray-500">
-                  Image {selectedArtwork.index + 1} of{" "}
-                  {selectedArtwork.images.length}
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="space-y-6">
+                    {/* Images Gallery */}
+                    {previewArtwork.images &&
+                      previewArtwork.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {previewArtwork.images.map(
+                            (img: string, idx: number) => (
+                              <img
+                                key={idx}
+                                src={img}
+                                alt={`Artwork image ${idx + 1}`}
+                                className="h-32 w-32 object-cover rounded shadow"
+                              />
+                            )
+                          )}
+                        </div>
+                      )}
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        Title
+                      </h4>
+                      <p className="text-gray-700">{previewArtwork.title}</p>
+                    </div>
+                    {artist && (
+                      <div>
+                        <h4 className="text-lg font-medium text-gray-900 mb-1">
+                          Artist
+                        </h4>
+                        <p className="text-gray-700">{artist.name}</p>
+                        <p className="text-gray-500 text-sm">{artist.email}</p>
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        Medium
+                      </h4>
+                      <p className="text-gray-700">
+                        {getMediumName(previewArtwork.medium)}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        Dimensions
+                      </h4>
+                      <p className="text-gray-700">
+                        {previewArtwork.height} x {previewArtwork.width}{" "}
+                        {previewArtwork.uom}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        Price
+                      </h4>
+                      <p className="text-gray-700">
+                        {previewArtwork.price ? (
+                          <NumericFormat
+                            value={previewArtwork.price}
+                            thousandSeparator=","
+                            decimalSeparator="."
+                            prefix="$"
+                            decimalScale={2}
+                            fixedDecimalScale
+                            displayType="text"
+                          />
+                        ) : (
+                          "Price not available"
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        Show Status
+                      </h4>
+                      <p className="text-gray-700">
+                        {previewArtwork.showStatus ? (
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              previewArtwork.showStatus === "accepted"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {previewArtwork.showStatus}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-500">
+                            Not in Show
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        Previous Shows
+                      </h4>
+                      <div className="flex flex-wrap gap-1">
+                        {previewArtwork.beenInShows &&
+                        previewArtwork.beenInShows.length > 0 ? (
+                          previewArtwork.beenInShows.map((showId: string) => {
+                            const show = artshows?.find((s) => s.id === showId);
+                            return (
+                              <span
+                                key={showId}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
+                              >
+                                {show?.name}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span className="text-sm text-gray-500">
+                            No previous shows
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        Description
+                      </h4>
+                      <p className="text-gray-700 whitespace-pre-line break-words">
+                        {previewArtwork.description || "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        Last Updated
+                      </h4>
+                      <p className="text-gray-700">
+                        {new Date(previewArtwork.updatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewArtwork(null)}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium px-4 py-2 rounded"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            );
+          })()}
 
         {/* Show Assignment Modal */}
         {showAssignmentModal && (

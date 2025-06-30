@@ -280,7 +280,7 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
             className={input}
             placeholder="Enter your email"
             required
-            disabled={isSubmitting}
+            disabled={true}
           />
         </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import {
   fetchUsers,
@@ -33,28 +33,6 @@ interface FilterState {
   interestInShow: string[];
 }
 
-interface ColumnVisibility {
-  name: boolean;
-  email: boolean;
-  role: boolean;
-  status: boolean;
-  interestInShow: boolean;
-  artworks: boolean;
-  actions: boolean;
-  isExpanded: boolean;
-}
-
-const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
-  name: true,
-  email: true,
-  role: true,
-  status: true,
-  interestInShow: false,
-  artworks: true,
-  actions: true,
-  isExpanded: false,
-};
-
 const Users = () => {
   const { label, input, select, button, h4, cancelButton, h1ReverseDark } =
     formClasses;
@@ -69,6 +47,7 @@ const Users = () => {
   const { data: artworks } = useAppSelector((state) => state.artwork);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAcceptShowModalOpen, setIsAcceptShowModalOpen] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<Partial<User>>({
     role: "on-boarding",
@@ -87,13 +66,13 @@ const Users = () => {
     statuses: [],
     interestInShow: [],
   });
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
-    () => {
-      const saved = localStorage.getItem("usersColumnVisibility");
-      return saved ? JSON.parse(saved) : DEFAULT_COLUMN_VISIBILITY;
-    }
-  );
   const { user: currentUser } = useAppSelector((state) => state.auth);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [isArtShowDropdownOpen, setIsArtShowDropdownOpen] = useState(false);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
+  const artShowDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -104,23 +83,59 @@ const Users = () => {
     };
   }, [dispatch]);
 
+  // Click outside logic for Role dropdown
   useEffect(() => {
-    localStorage.setItem(
-      "usersColumnVisibility",
-      JSON.stringify(columnVisibility)
-    );
-  }, [columnVisibility]);
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        roleDropdownRef.current &&
+        !roleDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsRoleDropdownOpen(false);
+      }
+    }
+    if (isRoleDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isRoleDropdownOpen]);
 
-  const toggleColumn = (column: keyof ColumnVisibility) => {
-    setColumnVisibility((prev) => ({
-      ...prev,
-      [column]: !prev[column],
-    }));
-  };
+  // Click outside logic for Status dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        statusDropdownRef.current &&
+        !statusDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsStatusDropdownOpen(false);
+      }
+    }
+    if (isStatusDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isStatusDropdownOpen]);
 
-  const resetColumnVisibility = () => {
-    setColumnVisibility(DEFAULT_COLUMN_VISIBILITY);
-  };
+  // Click outside logic for Art Show dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        artShowDropdownRef.current &&
+        !artShowDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsArtShowDropdownOpen(false);
+      }
+    }
+    if (isArtShowDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isArtShowDropdownOpen]);
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -246,11 +261,21 @@ const Users = () => {
 
       const artshowRef = doc(db, "artshows", acceptShowData.artshowId);
       const artshowDoc = await getDoc(artshowRef);
-      const currentArtistIds = artshowDoc.data()?.artistIds || [];
+      const artshowData = artshowDoc.data();
+      const currentArtistIds = artshowData?.artistIds || [];
+      const currentArtworkIds = artshowData?.artworkIds || [];
+      const currentArtworkOrder = artshowData?.artworkOrder || [];
+
+      // Add selected artwork IDs to the bottom of the artworkOrder array
+      const updatedArtworkOrder = [
+        ...currentArtworkOrder,
+        ...selectedArtworkIds,
+      ];
 
       await updateDoc(artshowRef, {
-        artworkIds: selectedArtworkIds,
+        artworkIds: [...currentArtworkIds, ...selectedArtworkIds],
         artistIds: [...currentArtistIds, selectedUser.id],
+        artworkOrder: updatedArtworkOrder,
         updatedAt: new Date().toISOString(),
       });
 
@@ -298,10 +323,14 @@ const Users = () => {
         const updatedArtworkIds = (artshowData?.artworkIds || []).filter(
           (id: string) => !artworkIds.includes(id)
         );
+        const updatedArtworkOrder = (artshowData?.artworkOrder || []).filter(
+          (id: string) => !artworkIds.includes(id)
+        );
 
         await updateDoc(artshowRef, {
           artistIds: updatedArtistIds,
           artworkIds: updatedArtworkIds,
+          artworkOrder: updatedArtworkOrder,
           updatedAt: new Date().toISOString(),
         });
 
@@ -338,6 +367,16 @@ const Users = () => {
         toast.error("Failed to remove user from show");
       }
     }
+  };
+
+  const handlePreviewUser = (user: User) => {
+    setSelectedUser(user);
+    setIsPreviewModalOpen(true);
+  };
+
+  const handleClosePreviewModal = () => {
+    setIsPreviewModalOpen(false);
+    setSelectedUser(null);
   };
 
   const filteredUsers = useMemo(() => {
@@ -386,70 +425,6 @@ const Users = () => {
           <h1 className={h1ReverseDark}>Users</h1>
         </div>
 
-        <div className="mb-4">
-          <button
-            onClick={() =>
-              setColumnVisibility((prev) => ({
-                ...prev,
-                isExpanded: !prev.isExpanded,
-              }))
-            }
-            className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-          >
-            <svg
-              className={`w-4 h-4 mr-2 transform transition-transform ${
-                columnVisibility.isExpanded ? "rotate-90" : ""
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-            Column Visibility
-          </button>
-
-          {columnVisibility.isExpanded && (
-            <div className="mt-2 p-4 bg-white rounded-lg shadow">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Visible Columns
-                </h3>
-                <button
-                  onClick={resetColumnVisibility}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  Reset to Default
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(columnVisibility)
-                  .filter(([key]) => key !== "isExpanded")
-                  .map(([key, isVisible]) => (
-                    <button
-                      key={key}
-                      onClick={() =>
-                        toggleColumn(key as keyof ColumnVisibility)
-                      }
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        isVisible
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {key.charAt(0).toUpperCase() + key.slice(1)}
-                    </button>
-                  ))}
-              </div>
-            </div>
-          )}
-        </div>
-
         <div className="mb-8 space-y-6">
           <div className="max-w-4xl mx-auto">
             <div className="flex">
@@ -491,15 +466,11 @@ const Users = () => {
 
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative">
+              <div className="relative" ref={roleDropdownRef}>
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("role-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsRoleDropdownOpen((open) => !open)}
                 >
                   Role
                   <svg
@@ -518,46 +489,41 @@ const Users = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="role-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    {["manager", "on-boarding", "artist"].map((role) => (
-                      <li key={role}>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.roles.includes(role)}
-                            onChange={(e) => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                roles: e.target.checked
-                                  ? [...prev.roles, role]
-                                  : prev.roles.filter((r) => r !== role),
-                              }));
-                            }}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2 capitalize">
-                            {role.replace("-", " ")}
-                          </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {isRoleDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {["admin", "on-boarding", "artist"].map((role) => (
+                        <li key={role}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.roles.includes(role)}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  roles: e.target.checked
+                                    ? [...prev.roles, role]
+                                    : prev.roles.filter((r) => r !== role),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2 capitalize">
+                              {role.replace("-", " ")}
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
-              <div className="relative">
+              <div className="relative" ref={statusDropdownRef}>
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("status-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsStatusDropdownOpen((open) => !open)}
                 >
                   Status
                   <svg
@@ -576,46 +542,43 @@ const Users = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="status-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    {["showing", "shown", "accepted", "rejected"].map(
-                      (status) => (
-                        <li key={status}>
-                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.statuses.includes(status)}
-                              onChange={(e) => {
-                                setFilters((prev) => ({
-                                  ...prev,
-                                  statuses: e.target.checked
-                                    ? [...prev.statuses, status]
-                                    : prev.statuses.filter((s) => s !== status),
-                                }));
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <span className="ml-2 capitalize">{status}</span>
-                          </label>
-                        </li>
-                      )
-                    )}
-                  </ul>
-                </div>
+                {isStatusDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {["showing", "shown", "accepted", "rejected"].map(
+                        (status) => (
+                          <li key={status}>
+                            <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={filters.statuses.includes(status)}
+                                onChange={(e) => {
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    statuses: e.target.checked
+                                      ? [...prev.statuses, status]
+                                      : prev.statuses.filter(
+                                          (s) => s !== status
+                                        ),
+                                  }));
+                                }}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="ml-2 capitalize">{status}</span>
+                            </label>
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
               </div>
 
-              <div className="relative">
+              <div className="relative" ref={artShowDropdownRef}>
                 <button
                   type="button"
                   className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() =>
-                    document
-                      .getElementById("interest-dropdown")
-                      ?.classList.toggle("hidden")
-                  }
+                  onClick={() => setIsArtShowDropdownOpen((open) => !open)}
                 >
                   Art Show
                   <svg
@@ -634,35 +597,36 @@ const Users = () => {
                     />
                   </svg>
                 </button>
-                <div
-                  id="interest-dropdown"
-                  className="z-10 hidden absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto"
-                >
-                  <ul className="py-2 text-sm text-gray-700">
-                    {artshows.map((show) => (
-                      <li key={show.id}>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.interestInShow.includes(show.name)}
-                            onChange={(e) => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                interestInShow: e.target.checked
-                                  ? [...prev.interestInShow, show.name]
-                                  : prev.interestInShow.filter(
-                                      (name) => name !== show.name
-                                    ),
-                              }));
-                            }}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="ml-2">{show.name}</span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {isArtShowDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {artshows.map((show) => (
+                        <li key={show.id}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.interestInShow.includes(
+                                show.name
+                              )}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  interestInShow: e.target.checked
+                                    ? [...prev.interestInShow, show.name]
+                                    : prev.interestInShow.filter(
+                                        (name) => name !== show.name
+                                      ),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2">{show.name}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -763,160 +727,65 @@ const Users = () => {
           )}
         </div>
 
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <div className="overflow-x-auto w-full">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {columnVisibility.name && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
+            {filteredUsers.map((user) => (
+              <div
+                key={user.id}
+                className="bg-white rounded-lg shadow p-6 flex flex-col items-center w-full max-w-md lg:max-w-lg"
+              >
+                <img
+                  className="h-20 w-20 rounded-full object-cover mb-3"
+                  src={
+                    user.photoUrl ||
+                    "https://ui-avatars.com/api/?name=" +
+                      encodeURIComponent(user.name)
+                  }
+                  alt={user.name}
+                />
+                <div className="text-lg font-semibold text-gray-900 text-center">
+                  {user.name}
+                </div>
+                <div className="text-xs text-gray-500 text-center mb-4">
+                  {user.email}
+                </div>
+                <div className="flex flex-col items-center space-y-2 w-full">
+                  <button
+                    onClick={() => handlePreviewUser(user)}
+                    className="text-blue-600 hover:text-blue-900 w-full"
+                  >
+                    Preview
+                  </button>
+                  {/* <button
+                    onClick={() => handleOpenModal(user)}
+                    className="text-indigo-600 hover:text-indigo-900 w-full"
+                  >
+                    Edit
+                  </button> */}
+                  {user.status !== "showing" && user.status !== "accepted" && (
+                    <button
+                      onClick={() => handleAcceptIntoShow(user)}
+                      className={`text-green-600 hover:text-green-900 w-full ${
+                        !user.artworks || user.artworks.length === 0
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                      disabled={!user.artworks || user.artworks.length === 0}
+                    >
+                      Accept into Show
+                    </button>
                   )}
-                  {columnVisibility.email && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Email
-                    </th>
+                  {user.artshowId && (
+                    <button
+                      onClick={() => handleRemoveFromShow(user)}
+                      className="text-red-600 hover:text-red-900 w-full"
+                    >
+                      Remove from Show
+                    </button>
                   )}
-                  {columnVisibility.role && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                  )}
-                  {columnVisibility.status && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                  )}
-                  {columnVisibility.interestInShow && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Interest in Show
-                    </th>
-                  )}
-                  {columnVisibility.artworks && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Artworks
-                    </th>
-                  )}
-                  {columnVisibility.actions && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id}>
-                    {columnVisibility.name && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <img
-                              className="h-10 w-10 rounded-full object-cover"
-                              src={
-                                user.photoUrl ||
-                                "https://ui-avatars.com/api/?name=" +
-                                  encodeURIComponent(user.name)
-                              }
-                              alt={user.name}
-                            />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.name}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    )}
-                    {columnVisibility.email && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {user.email}
-                        </div>
-                      </td>
-                    )}
-                    {columnVisibility.role && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{user.role}</div>
-                      </td>
-                    )}
-                    {columnVisibility.status && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            user.status === "accepted"
-                              ? "bg-green-100 text-green-800"
-                              : user.status === "shown"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : user.status === "showing"
-                              ? "bg-blue-100 text-blue-800"
-                              : user.status === "rejected"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {user.status}
-                        </span>
-                      </td>
-                    )}
-                    {columnVisibility.interestInShow && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {user.interestInShow
-                            ? user.interestInShow
-                            : "None Specified"}
-                        </div>
-                      </td>
-                    )}
-                    {columnVisibility.artworks && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleArtworksClick(user.id!)}
-                          className="text-sm text-indigo-600 hover:text-indigo-900 hover:underline"
-                        >
-                          {user.artworks?.length || 0} artworks
-                        </button>
-                      </td>
-                    )}
-                    {columnVisibility.actions && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {user.status === "showing" && (
-                          <button
-                            onClick={() => handleAcceptIntoShow(user)}
-                            className={`text-green-600 hover:text-green-900 mr-4 ${
-                              !user.artworks || user.artworks.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : ""
-                            }`}
-                            disabled={
-                              !user.artworks || user.artworks.length === 0
-                            }
-                          >
-                            Accept into Show
-                          </button>
-                        )}
-                        {user.artshowId && (
-                          <button
-                            onClick={() => handleRemoveFromShow(user)}
-                            className="text-red-600 hover:text-red-900 mr-4"
-                          >
-                            Remove from Show
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleOpenModal(user)}
-                          className="text-indigo-600 hover:text-indigo-900 mr-4"
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -990,7 +859,7 @@ const Users = () => {
                       className={select}
                       required
                     >
-                      <option value="manager">Manager</option>
+                      <option value="admin">admin</option>
                       <option value="on-boarding">On-boarding</option>
                       <option value="artist">Artist</option>
                     </select>
@@ -1217,6 +1086,351 @@ const Users = () => {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isPreviewModalOpen && selectedUser && (
+          <div
+            className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start md:pl-64 justify-center"
+            onClick={handleClosePreviewModal}
+          >
+            <div
+              className="relative top-10 mx-auto p-5 border w-[800px] max-w-full max-h-[90vh] shadow-lg rounded-md bg-white overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className={h4}>Artist Profile Preview</h3>
+                  <button
+                    onClick={handleClosePreviewModal}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Profile Header */}
+                  <div className="flex items-center space-x-4 border-b pb-4">
+                    <img
+                      className="h-20 w-20 rounded-full object-cover"
+                      src={
+                        selectedUser.photoUrl ||
+                        "https://ui-avatars.com/api/?name=" +
+                          encodeURIComponent(selectedUser.name)
+                      }
+                      alt={selectedUser.name}
+                    />
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {selectedUser.name}
+                      </h2>
+                      <p className="text-gray-600">{selectedUser.email}</p>
+                      <div className="flex space-x-2 mt-2">
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            selectedUser.status === "accepted"
+                              ? "bg-green-100 text-green-800"
+                              : selectedUser.status === "shown"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : selectedUser.status === "showing"
+                              ? "bg-blue-100 text-blue-800"
+                              : selectedUser.status === "rejected"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {selectedUser.status || "No Status"}
+                        </span>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                          {selectedUser.role}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bio */}
+                  {selectedUser.bio && (
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">
+                        Bio
+                      </h4>
+                      <p className="text-gray-700 leading-relaxed">
+                        {selectedUser.bio}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Contact Information */}
+                  {selectedUser.contactInfo && (
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-3">
+                        Contact Information
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {selectedUser.contactInfo.address && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Address
+                            </label>
+                            <p className="text-gray-600">
+                              {selectedUser.contactInfo.address}
+                            </p>
+                          </div>
+                        )}
+                        {selectedUser.contactInfo.phone && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Phone
+                            </label>
+                            <p className="text-gray-600">
+                              {selectedUser.contactInfo.phone}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Social Links */}
+                  {selectedUser.socialLinks &&
+                    Object.keys(selectedUser.socialLinks).length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-medium text-gray-900 mb-3">
+                          Social Links
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {Object.entries(selectedUser.socialLinks).map(
+                            ([platform, link]) =>
+                              link && (
+                                <div key={platform}>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
+                                    {platform}
+                                  </label>
+                                  <p className="text-blue-600 hover:text-blue-800">
+                                    <a
+                                      href={
+                                        link.startsWith("http")
+                                          ? link
+                                          : `https://${platform}.com/${link}`
+                                      }
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      {link}
+                                    </a>
+                                  </p>
+                                </div>
+                              )
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Payment Information */}
+                  {selectedUser.paymentInformation && (
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-3">
+                        Payment Information
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {selectedUser.paymentInformation.venmo && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Venmo
+                            </label>
+                            <p className="text-gray-600">
+                              @{selectedUser.paymentInformation.venmo}
+                            </p>
+                          </div>
+                        )}
+                        {selectedUser.paymentInformation.zelle && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Zelle
+                            </label>
+                            <p className="text-gray-600">
+                              {selectedUser.paymentInformation.zelle}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notification Preferences */}
+                  {selectedUser.notificationPreferences && (
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-3">
+                        Notification Preferences
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email Notifications
+                          </label>
+                          <p className="text-gray-600">
+                            {selectedUser.notificationPreferences.email?.active
+                              ? "Active"
+                              : "Inactive"}
+                            {selectedUser.notificationPreferences.email
+                              ?.frequency &&
+                              ` (${selectedUser.notificationPreferences.email.frequency})`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Art Show Information */}
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-3">
+                      Art Show Information
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedUser.interestInShow && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Interest in Show
+                          </label>
+                          <p className="text-gray-600">
+                            {selectedUser.interestInShow}
+                          </p>
+                        </div>
+                      )}
+                      {selectedUser.artshowId && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Current Art Show ID
+                          </label>
+                          <p className="text-gray-600 font-mono text-sm">
+                            {selectedUser.artshowId}
+                          </p>
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Shown at ArtSpace
+                        </label>
+                        <p className="text-gray-600">
+                          {selectedUser.shownAtArtspace ? "Yes" : "No"}
+                        </p>
+                      </div>
+                      {selectedUser.artworks && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Artworks
+                          </label>
+                          <button
+                            className="text-indigo-600 hover:text-indigo-900 hover:underline text-sm p-0 bg-transparent border-none cursor-pointer"
+                            style={{ outline: "none" }}
+                            onClick={() => {
+                              handleClosePreviewModal();
+                              navigate(`/users/${selectedUser.id}/artworks`);
+                            }}
+                          >
+                            {selectedUser.artworks.length} artworks
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Assigned Locations */}
+                  {selectedUser.assignedLocations &&
+                    selectedUser.assignedLocations.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-medium text-gray-900 mb-3">
+                          Assigned Locations
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedUser.assignedLocations.map((locationId) => {
+                            const location = locations.find(
+                              (loc) => loc.id === locationId
+                            );
+                            return (
+                              <span
+                                key={locationId}
+                                className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                              >
+                                {location ? location.name : locationId}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Timestamps */}
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-3">
+                      Timestamps
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedUser.createdAt && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Created At
+                          </label>
+                          <p className="text-gray-600">
+                            {new Date(selectedUser.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                      {selectedUser.updatedAt && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Last Updated
+                          </label>
+                          <p className="text-gray-600">
+                            {new Date(selectedUser.updatedAt).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* User ID */}
+                  {currentUser?.email === "jgw.jakegeorge@gmail.com" && (
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-3">
+                        Technical Information
+                      </h4>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          User ID
+                        </label>
+                        <p className="text-gray-600 font-mono text-sm break-all">
+                          {selectedUser.id}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleClosePreviewModal}
+                    className={cancelButton}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>

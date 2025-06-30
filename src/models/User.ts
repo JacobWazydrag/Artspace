@@ -4,7 +4,7 @@ export interface User {
   email: string;
   bio: string;
   role: "manager" | "on-boarding" | "artist" | "admin";
-  status: "accepted" | "rejected" | "shown" | "showing" | null;
+  status: "accepted" | "rejected" | "shown" | "showing" | "pending" | null;
   contactInfo?: {
     phone?: string;
     address?: string;
@@ -23,4 +23,9 @@ export interface User {
   notificationPreferences?: {
     email: { active: boolean; frequency: "daily" | "weekly" | "monthly" };
   };
+  paymentInformation?: {
+    venmo?: string;
+    zelle?: string;
+  };
+  shownAtArtspace?: boolean;
 }
