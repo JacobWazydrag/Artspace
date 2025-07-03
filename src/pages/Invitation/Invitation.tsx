@@ -5,6 +5,7 @@ import { fetchUsers } from "../../features/usersSlice";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";
 import { toast } from "react-hot-toast";
+import { mergeEmailConfig } from "../../utils/emailConfig";
 
 type TabType = "invitation" | "custom-message" | "test";
 
@@ -109,7 +110,7 @@ const Invitation = () => {
       }
 
       // Send invitation emails
-      const mailData = {
+      const mailData = mergeEmailConfig({
         replyTo: "artspacechicago@gmail.com",
         cc: ["artspacechicago@gmail.com", "jgw.jakegeorge@gmail.com"],
         bcc: emailList,
@@ -172,7 +173,7 @@ const Invitation = () => {
             </div>
           `,
         },
-      };
+      });
 
       await dispatch(sendMail(mailData)).unwrap();
 
@@ -209,7 +210,7 @@ const Invitation = () => {
     setIsCustomSubmitting(true);
 
     try {
-      const mailData = {
+      const mailData = mergeEmailConfig({
         replyTo: "artspacechicago@gmail.com",
         cc: ["artspacechicago@gmail.com", "jgw.jakegeorge@gmail.com"],
         bcc: selectedUserEmails,
@@ -217,7 +218,7 @@ const Invitation = () => {
           subject: subject,
           html: htmlMessage,
         },
-      };
+      });
 
       await dispatch(sendMail(mailData)).unwrap();
 

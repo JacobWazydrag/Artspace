@@ -311,7 +311,7 @@ const PublicArtshow = () => {
         </div>
       </section>
       {/* Description below image for mobile */}
-      <div className="block sm:hidden bg-gray-900 px-4 py-6">
+      {/* <div className="block sm:hidden bg-gray-900 px-4 py-6">
         <h1 className="text-3xl font-bold text-white mb-2">
           {activeArtshow.name}
         </h1>
@@ -320,7 +320,7 @@ const PublicArtshow = () => {
           - {new Date(activeArtshow.endDate + "T00:00:00").toLocaleDateString()}
         </p>
         <p className="text-white">{activeArtshow.description}</p>
-      </div>
+      </div> */}
 
       {/* Artists Section */}
       <div className="container mx-auto px-4 py-16">

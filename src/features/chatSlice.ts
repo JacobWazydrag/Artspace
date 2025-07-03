@@ -18,6 +18,7 @@ import {
 import { db } from "../firebase";
 import { PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "../store/store"; // adjust path if needed
+import { mergeEmailConfig } from "../utils/emailConfig";
 
 export interface Message {
   id?: string;
@@ -190,17 +191,14 @@ export const sendMessage = createAsyncThunk(
           const receiverData = receiverDoc.data();
 
           // Check if sender is admin AND receiver has email notifications enabled
-          if (
-            senderData.role === "admin" &&
-            receiverData.notificationPreferences?.email?.active === true
-          ) {
+          if (receiverData.notificationPreferences?.email?.active === true) {
             const receiverName = receiverData.name || "User";
 
-            const mailData = {
+            const mailData = mergeEmailConfig({
               replyTo: "artspacechicago@gmail.com",
               toUids: [message.receiverId],
               message: {
-                subject: "💬 New Message from ArtSpace Chicago Admin",
+                subject: "💬 New Message from ArtSpace Chicago",
                 html: `
                   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; border-radius: 10px;">
                     <div style="text-align: center; margin-bottom: 30px;">
@@ -246,7 +244,7 @@ export const sendMessage = createAsyncThunk(
                   </div>
                 `,
               },
-            };
+            });
 
             // Create mail document directly in Firestore
             await addDoc(collection(db, "mail"), {

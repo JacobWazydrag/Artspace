@@ -29,6 +29,7 @@ import { fetchUserProfile } from "../../features/profileSlice";
 import { sendMail } from "../../features/mailSlice";
 import ResetPassword from "../../components/ResetPassword/ResetPassword";
 import { toast } from "react-hot-toast";
+import { mergeEmailConfig } from "../../utils/emailConfig";
 
 interface FormValues {
   email: string;
@@ -228,7 +229,7 @@ const Auth = () => {
 
   const sendNewUserNotification = async (userEmail: string, name: string) => {
     try {
-      const mailData = {
+      const mailData = mergeEmailConfig({
         replyTo: "artspacechicago@gmail.com",
         toUids: [
           "7vwsK29oPrViRdDgBP6ouy7iSS12",
@@ -279,7 +280,7 @@ const Auth = () => {
             </div>
           `,
         },
-      };
+      });
 
       await dispatch(sendMail(mailData)).unwrap();
     } catch (error) {

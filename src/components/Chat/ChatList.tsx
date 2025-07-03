@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import { createChat, setCurrentChat, Chat } from "../../features/chatSlice";
+import { fetchUsersForChat } from "../../features/usersSlice";
 import { format } from "date-fns";
 import { User } from "../../models/User";
 
@@ -8,11 +9,18 @@ const ChatList: React.FC = () => {
   const dispatch = useAppDispatch();
   const { chats, currentChat } = useAppSelector((state) => state.chat);
   const { user: currentUser } = useAppSelector((state) => state.auth);
-  const { data: users } = useAppSelector((state) => state.users);
+  const { data: users, loading: usersLoading } = useAppSelector(
+    (state) => state.users
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Fetch users when component mounts
+  useEffect(() => {
+    dispatch(fetchUsersForChat());
+  }, [dispatch]);
 
   // Get existing chat participants
   const existingChatParticipants = useMemo(() => {
@@ -65,19 +73,37 @@ const ChatList: React.FC = () => {
   };
 
   const getOtherParticipantName = (chat: Chat) => {
+    if (!currentUser?.id) {
+      return "Unknown User";
+    }
+
     const otherParticipantId = chat.participants.find(
-      (id: string) => id !== currentUser?.id
-    )!;
+      (id: string) => id !== currentUser.id
+    );
+
+    if (!otherParticipantId) {
+      return "Unknown User";
+    }
+
     const otherUser = users.find((u) => u.id === otherParticipantId);
     return otherUser?.name || otherUser?.email || "Unknown User";
   };
 
   const getOtherParticipantPhoto = (chat: Chat) => {
+    if (!currentUser?.id) {
+      return null;
+    }
+
     const otherParticipantId = chat.participants.find(
-      (id: string) => id !== currentUser?.id
-    )!;
+      (id: string) => id !== currentUser.id
+    );
+
+    if (!otherParticipantId) {
+      return null;
+    }
+
     const otherUser = users.find((u) => u.id === otherParticipantId);
-    return otherUser?.photoUrl;
+    return otherUser?.photoUrl || null;
   };
 
   // const getReadStatus = (chat: Chat) => {
@@ -148,7 +174,14 @@ const ChatList: React.FC = () => {
         </button>
       </div>
 
-      {chats.length === 0 ? (
+      {usersLoading || !currentUser ? (
+        <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+            Loading chats...
+          </div>
+        </div>
+      ) : chats.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-gray-500">
           No chats yet. Start a new conversation!
         </div>
@@ -179,7 +212,7 @@ const ChatList: React.FC = () => {
                         />
                       ) : (
                         <span className="text-gray-600 font-medium">
-                          {getOtherParticipantName(chat).charAt(0)}
+                          {(getOtherParticipantName(chat) || "U").charAt(0)}
                         </span>
                       )}
                     </div>
@@ -250,7 +283,7 @@ const ChatList: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                           <span className="text-gray-600 font-medium">
-                            {user.name.charAt(0)}
+                            {(user.name || user.email || "U").charAt(0)}
                           </span>
                         </div>
                         <div>

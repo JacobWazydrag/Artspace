@@ -171,14 +171,14 @@ const PublicArtshowArtworks = () => {
             <p className="text-lg md:text-xl opacity-80 max-w-3xl mx-auto">
               {activeArtshow.description}
             </p>
-            <div className="mt-8">
+            {/* <div className="mt-8">
               <a
                 href="/artshow"
                 className="inline-flex items-center px-6 py-3 bg-white text-indigo-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200"
               >
                 ← Back to Show Overview
               </a>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
@@ -302,14 +302,14 @@ const PublicArtshowArtworks = () => {
             <p className="text-gray-400 text-lg">
               Thoughtfully curated emerging artists exhibitions
             </p>
-            <div className="mt-6">
+            {/* <div className="mt-6">
               <a
                 href="/artshow"
                 className="text-indigo-400 hover:text-indigo-300 transition-colors duration-200"
               >
                 ← Back to Show Overview
               </a>
-            </div>
+            </div> */}
           </div>
         </div>
       </footer>
