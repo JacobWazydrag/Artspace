@@ -15,6 +15,7 @@ export interface Artwork {
   status?: "pending" | "approved" | "rejected";
   showStatus?: "accepted" | "rejected" | "shown" | null;
   availability?: "available" | "sold" | "not for sale";
+  sold?: boolean;
   createdAt: string;
   updatedAt: string;
   beenInShows?: string[];

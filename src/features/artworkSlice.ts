@@ -36,6 +36,7 @@ export interface Artwork {
   height?: number;
   width?: number;
   availability?: "available" | "sold" | "not for sale";
+  sold?: boolean;
   createdAt: string;
   updatedAt: string;
   locationId?: string;
@@ -517,6 +518,17 @@ const artworkSlice = createSlice({
       state.loading = false;
       state.error = null;
     },
+    updateSingleArtwork: (state, action) => {
+      const index = state.data.findIndex(
+        (artwork) => artwork.id === action.payload.id
+      );
+      if (index !== -1) {
+        state.data[index] = {
+          ...state.data[index],
+          ...action.payload,
+        };
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -653,5 +665,6 @@ const artworkSlice = createSlice({
   },
 });
 
-export const { resetArtworkState, clearArtwork } = artworkSlice.actions;
+export const { resetArtworkState, clearArtwork, updateSingleArtwork } =
+  artworkSlice.actions;
 export default artworkSlice.reducer;

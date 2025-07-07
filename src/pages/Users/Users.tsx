@@ -398,6 +398,7 @@ const Users = () => {
           updateDoc(doc.ref, {
             artshowId: "",
             locationId: "",
+            showStatus: "rejected",
             updatedAt: new Date().toISOString(),
           })
         );
@@ -1051,8 +1052,14 @@ const Users = () => {
         )}
 
         {isAcceptShowModalOpen && selectedUser && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-            <div className="relative top-20 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white">
+          <div
+            className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start md:pl-64 justify-center"
+            onClick={() => setIsAcceptShowModalOpen(false)}
+          >
+            <div
+              className="relative top-10 mx-auto p-5 border w-[600px] max-w-full max-h-[90vh] shadow-lg rounded-md bg-white overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="mt-3">
                 <h3 className={h4}>Accept {selectedUser.name} into Show</h3>
                 <form onSubmit={handleAcceptShowSubmit} className="space-y-4">
@@ -1150,12 +1157,12 @@ const Users = () => {
                                   className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
                                 />
                                 <div className="flex-1">
-                                  <div className="flex items-start space-x-4">
+                                  <div className="flex flex-col md:flex-row md:items-start space-y-4 md:space-y-0 md:space-x-4">
                                     {artwork.images[0] && (
                                       <img
                                         src={artwork.images[0]}
                                         alt={artwork.title}
-                                        className="h-64 w-64 object-contain rounded-lg shadow-sm bg-gray-100"
+                                        className="h-64 w-full md:w-64 object-contain rounded-lg shadow-sm bg-gray-100"
                                       />
                                     )}
                                     <div className="flex-1 min-w-0">

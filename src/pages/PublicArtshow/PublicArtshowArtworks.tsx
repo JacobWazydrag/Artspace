@@ -4,11 +4,14 @@ import {
   fetchPublicArtshowData,
   updateActiveArtshow,
 } from "../../features/publicSlice";
-import { fetchAllArtworks } from "../../features/artworkSlice";
+import {
+  fetchAllArtworks,
+  updateSingleArtwork,
+} from "../../features/artworkSlice";
 import { fetchUsers } from "../../features/usersSlice";
 import { motion, AnimatePresence } from "framer-motion";
 import { NumericFormat } from "react-number-format";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
 
 interface ImageGalleryProps {
@@ -199,6 +202,41 @@ const PublicArtshowArtworks = () => {
     return () => unsubscribe();
   }, [activeArtshow?.id, dispatch]);
 
+  // Live listener for artworks updates
+  useEffect(() => {
+    if (!activeArtshow?.artworkIds || activeArtshow.artworkIds.length === 0)
+      return;
+
+    const artworkIds = activeArtshow.artworkIds;
+
+    // Create listeners for each artwork in the show
+    const unsubscribes = artworkIds.map((artworkId: string) => {
+      const artworkRef = doc(db, "artworks", artworkId);
+
+      return onSnapshot(
+        artworkRef,
+        (doc) => {
+          if (doc.exists()) {
+            const updatedArtwork = { id: doc.id, ...doc.data() };
+
+            // Update the artwork in the Redux store
+            dispatch(updateSingleArtwork(updatedArtwork));
+          }
+        },
+        (error) => {
+          console.error(
+            `Error listening to artwork ${artworkId} updates:`,
+            error
+          );
+        }
+      );
+    });
+
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [activeArtshow?.artworkIds, dispatch]);
+
   useEffect(() => {
     if (activeArtshow && artworks.length > 0 && users.length > 0) {
       // Get the artworkOrder array from the artshow
@@ -232,6 +270,14 @@ const PublicArtshowArtworks = () => {
   const handleArtworkClick = (artwork: any) => {
     setSelectedArtwork(artwork);
     setGalleryOpen(true);
+  };
+
+  // Helper function to get thumbnail URL for Firebase Storage images
+  const getThumbnailUrl = (originalUrl: string) => {
+    if (originalUrl.includes("firebasestorage.googleapis.com")) {
+      return `${originalUrl}?alt=media&w=400&h=400`;
+    }
+    return originalUrl;
   };
 
   if (loading) {
@@ -343,10 +389,6 @@ const PublicArtshowArtworks = () => {
                           className="w-full h-full object-cover transition-opacity duration-300"
                           loading="lazy"
                           decoding="async"
-                          onLoad={(e) => {
-                            e.currentTarget.style.opacity = "1";
-                          }}
-                          style={{ opacity: 0 }}
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -370,6 +412,15 @@ const PublicArtshowArtworks = () => {
                       <div className="absolute top-4 left-4 bg-white bg-opacity-90 text-gray-900 px-3 py-1 rounded-full text-sm font-bold">
                         #{index + 1}
                       </div>
+
+                      {/* SOLD Banner */}
+                      {artwork.sold && (
+                        <div className="absolute right-0 top-0 h-16 w-16 pointer-events-none">
+                          <div className="absolute transform rotate-45 bg-red-600 text-center text-white font-semibold py-1 right-[-35px] top-[32px] w-[170px]">
+                            SOLD
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Content */}

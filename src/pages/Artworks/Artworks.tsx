@@ -4,6 +4,8 @@ import {
   fetchAllArtworks,
   updateArtworkShowStatus,
 } from "../../features/artworkSlice";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../firebase";
 import { fetchUsers } from "../../features/usersSlice";
 import { fetchArtshows } from "../../features/artshowsSlice";
 import { fetchLocations } from "../../features/locationsSlice";
@@ -384,6 +386,26 @@ const Artworks = () => {
     } catch (error) {
       console.error("Error updating artwork show status:", error);
       toast.error("Failed to update artwork show status");
+    }
+  };
+
+  const handleMarkAsSold = async (artworkId: string) => {
+    if (window.confirm("Are you sure you want to mark this artwork as sold?")) {
+      try {
+        const artworkRef = doc(db, "artworks", artworkId);
+        await updateDoc(artworkRef, {
+          sold: true,
+          updatedAt: new Date().toISOString(),
+        });
+
+        // Refresh the artworks list
+        await dispatch(fetchAllArtworks());
+
+        toast.success("Artwork marked as sold successfully");
+      } catch (error) {
+        console.error("Error marking artwork as sold:", error);
+        toast.error("Failed to mark artwork as sold");
+      }
     }
   };
 
@@ -997,12 +1019,27 @@ const Artworks = () => {
                         </div>
                       </>
                     )}
-                    <button
-                      onClick={() => setPreviewArtwork(artwork)}
-                      className="text-blue-600 hover:text-blue-900 w-full mt-2"
-                    >
-                      Preview
-                    </button>
+                    <div className="flex flex-col space-y-2 w-full mt-2">
+                      <button
+                        onClick={() => setPreviewArtwork(artwork)}
+                        className="text-blue-600 hover:text-blue-900 w-full"
+                      >
+                        Preview
+                      </button>
+                      {!artwork.sold && (
+                        <button
+                          onClick={() => handleMarkAsSold(artwork.id!)}
+                          className="text-green-600 hover:text-green-900 w-full font-medium"
+                        >
+                          Mark as Sold
+                        </button>
+                      )}
+                      {artwork.sold && (
+                        <span className="text-green-600 font-bold text-center py-1">
+                          SOLD
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })
@@ -1127,6 +1164,22 @@ const Artworks = () => {
                         ) : (
                           <span className="text-sm text-gray-500">
                             Not in Show
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        Sale Status
+                      </h4>
+                      <p className="text-gray-700">
+                        {previewArtwork.sold ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            SOLD
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-500">
+                            Available
                           </span>
                         )}
                       </p>
