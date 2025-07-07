@@ -172,6 +172,34 @@ const Sidebar = () => {
               </span>
             </Link>
           </li>
+
+          {/* External Links */}
+          <li>
+            <a
+              href={`${process.env.REACT_APP_URL}/artshow`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block px-4 py-2 rounded hover:bg-gray-700"
+            >
+              <span className="flex items-center gap-3">
+                <UsersIcon className="w-5 h-5" />
+                Artists Page
+              </span>
+            </a>
+          </li>
+          <li>
+            <a
+              href={`${process.env.REACT_APP_URL}/artshow-artworks`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block px-4 py-2 rounded hover:bg-gray-700"
+            >
+              <span className="flex items-center gap-3">
+                <PaintBrushIcon className="w-5 h-5" />
+                Artworks Page
+              </span>
+            </a>
+          </li>
         </ul>
       </nav>
 

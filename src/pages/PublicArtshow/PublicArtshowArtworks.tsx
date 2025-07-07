@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
-import { fetchPublicArtshowData } from "../../features/publicSlice";
+import {
+  fetchPublicArtshowData,
+  updateActiveArtshow,
+} from "../../features/publicSlice";
 import { fetchAllArtworks } from "../../features/artworkSlice";
 import { fetchUsers } from "../../features/usersSlice";
 import { motion, AnimatePresence } from "framer-motion";
 import { NumericFormat } from "react-number-format";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../../firebase";
 
 interface ImageGalleryProps {
   images: string[];
@@ -169,6 +174,30 @@ const PublicArtshowArtworks = () => {
     dispatch(fetchAllArtworks());
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  // Live listener for artshow updates
+  useEffect(() => {
+    if (!activeArtshow?.id) return;
+
+    const artshowRef = doc(db, "artshows", activeArtshow.id);
+
+    const unsubscribe = onSnapshot(
+      artshowRef,
+      (doc) => {
+        if (doc.exists()) {
+          const updatedArtshow = { id: doc.id, ...doc.data() };
+          // Update the local state with the latest artshow data
+          // This will trigger a re-render with the updated artworkOrder
+          dispatch(updateActiveArtshow(updatedArtshow));
+        }
+      },
+      (error) => {
+        console.error("Error listening to artshow updates:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [activeArtshow?.id, dispatch]);
 
   useEffect(() => {
     if (activeArtshow && artworks.length > 0 && users.length > 0) {

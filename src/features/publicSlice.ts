@@ -78,6 +78,9 @@ const publicSlice = createSlice({
       state.loading = false;
       state.error = null;
     },
+    updateActiveArtshow: (state, action) => {
+      state.activeArtshow = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -100,5 +103,5 @@ const publicSlice = createSlice({
   },
 });
 
-export const { clearPublicData } = publicSlice.actions;
+export const { clearPublicData, updateActiveArtshow } = publicSlice.actions;
 export default publicSlice.reducer;
