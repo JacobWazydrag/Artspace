@@ -11,56 +11,140 @@ interface ImageGalleryProps {
   isOpen: boolean;
   onClose: () => void;
   initialIndex?: number;
+  artwork?: any;
 }
+
+const ArtistModal = ({
+  artist,
+  isOpen,
+  onClose,
+}: {
+  artist: any;
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">Artist Profile</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="text-center">
+          <img
+            src={
+              artist.photoUrl ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                artist.name || "Artist"
+              )}`
+            }
+            alt={artist.name}
+            className="w-24 h-24 rounded-full object-cover mx-auto mb-4"
+          />
+
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            {artist.name}
+          </h3>
+
+          {artist.socialLinks?.instagram && (
+            <p className="text-indigo-600 font-medium mb-4">
+              Instagram: {artist.socialLinks.instagram}
+            </p>
+          )}
+
+          {artist.bio && (
+            <p className="text-gray-700 leading-relaxed">{artist.bio}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ImageGallery = ({
   images,
   isOpen,
   onClose,
   initialIndex = 0,
+  artwork,
 }: ImageGalleryProps) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const { data: mediums } = useAppSelector((state) => state.mediums);
+
+  const getMediumName = (mediumId: string) => {
+    const medium = mediums?.find((m) => m.id === mediumId);
+    return medium?.name || mediumId;
+  };
 
   if (!isOpen) return null;
 
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  };
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col md:items-center md:justify-center p-4"
+      onClick={onClose}
+    >
       <button
         onClick={onClose}
         className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 z-10"
       >
         ×
       </button>
-      <button
-        onClick={handlePrevious}
-        className="absolute left-4 text-white text-4xl hover:text-gray-300 z-10"
-      >
-        ‹
-      </button>
-      <button
-        onClick={handleNext}
-        className="absolute right-4 text-white text-4xl hover:text-gray-300 z-10"
-      >
-        ›
-      </button>
-      <div className="max-w-4xl max-h-[90vh]">
-        <img
-          src={images[currentIndex]}
-          alt={`Artwork image ${currentIndex + 1}`}
-          className="max-w-full max-h-[90vh] object-contain"
-        />
+
+      <div className="flex-1 flex flex-col justify-center items-center">
+        <div className="w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+          <img
+            src={images[0]}
+            alt="Artwork"
+            className="w-full h-auto max-h-[60vh] md:max-h-[80vh] object-contain"
+          />
+        </div>
       </div>
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
-        {currentIndex + 1} / {images.length}
-      </div>
+
+      {/* Artwork Description - Mobile: below image, Desktop: overlay */}
+      {artwork?.description && (
+        <>
+          {/* Mobile: Description below image */}
+          <div className="md:hidden bg-black bg-opacity-75 text-white p-4 mt-4 rounded-lg">
+            <p className="text-sm leading-relaxed opacity-90">
+              {artwork.description}
+            </p>
+          </div>
+
+          {/* Desktop: Description overlay */}
+          <div className="hidden md:block absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white p-6">
+            <div className="max-w-4xl mx-auto">
+              <p className="text-sm leading-relaxed opacity-90">
+                {artwork.description}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -77,6 +161,8 @@ const PublicArtshowArtworks = () => {
   const [orderedArtworks, setOrderedArtworks] = useState<any[]>([]);
   const [selectedArtwork, setSelectedArtwork] = useState<any>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [selectedArtist, setSelectedArtist] = useState<any>(null);
+  const [artistModalOpen, setArtistModalOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchPublicArtshowData());
@@ -187,13 +273,13 @@ const PublicArtshowArtworks = () => {
       <section className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Featured Artworks
+            Exhibition
           </h2>
-          <p className="text-gray-600 text-lg">
+          {/* <p className="text-gray-600 text-lg">
             {orderedArtworks.length} artwork
             {orderedArtworks.length !== 1 ? "s" : ""} curated for this
             exhibition
-          </p>
+          </p> */}
         </div>
 
         {orderedArtworks.length === 0 ? (
@@ -220,12 +306,18 @@ const PublicArtshowArtworks = () => {
                 >
                   <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                     {/* Image Container */}
-                    <div className="relative overflow-hidden aspect-square">
+                    <div className="relative overflow-hidden aspect-square bg-gray-100">
                       {artwork.images && artwork.images[0] ? (
                         <img
                           src={artwork.images[0]}
                           alt={artwork.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-opacity duration-300"
+                          loading="lazy"
+                          decoding="async"
+                          onLoad={(e) => {
+                            e.currentTarget.style.opacity = "1";
+                          }}
+                          style={{ opacity: 0 }}
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -257,7 +349,19 @@ const PublicArtshowArtworks = () => {
                         {artwork.title}
                       </h3>
 
-                      <p className="text-indigo-600 font-semibold mb-2">
+                      <p
+                        className="text-indigo-600 font-semibold mb-2 cursor-pointer hover:text-indigo-800 transition-colors duration-200"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const artist = users.find(
+                            (user) => user.id === artwork.artistId
+                          );
+                          if (artist) {
+                            setSelectedArtist(artist);
+                            setArtistModalOpen(true);
+                          }
+                        }}
+                      >
                         {artwork.artistName}
                       </p>
 
@@ -277,12 +381,6 @@ const PublicArtshowArtworks = () => {
                             fixedDecimalScale
                             displayType="text"
                           />
-                        </p>
-                      )}
-
-                      {artwork.description && (
-                        <p className="text-gray-600 text-sm mt-3 line-clamp-2">
-                          {artwork.description}
                         </p>
                       )}
                     </div>
@@ -322,6 +420,19 @@ const PublicArtshowArtworks = () => {
           onClose={() => {
             setGalleryOpen(false);
             setSelectedArtwork(null);
+          }}
+          artwork={selectedArtwork}
+        />
+      )}
+
+      {/* Artist Modal */}
+      {selectedArtist && (
+        <ArtistModal
+          artist={selectedArtist}
+          isOpen={artistModalOpen}
+          onClose={() => {
+            setArtistModalOpen(false);
+            setSelectedArtist(null);
           }}
         />
       )}

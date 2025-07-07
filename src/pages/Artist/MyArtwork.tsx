@@ -51,12 +51,35 @@ const MyArtwork = () => {
             <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
               {artworks.map((artwork) => (
                 <div key={artwork.id} className="break-inside-avoid mb-4">
-                  <img
-                    src={artwork.images[0]}
-                    alt={artwork.title}
-                    className="rounded-lg w-full h-auto cursor-pointer"
-                    onClick={() => setSelectedArtwork(artwork)}
-                  />
+                  <div className="relative">
+                    <img
+                      src={artwork.images[0]}
+                      alt={artwork.title}
+                      className="rounded-lg w-full h-auto cursor-pointer"
+                      onClick={() => setSelectedArtwork(artwork)}
+                    />
+                    {artwork.showStatus && (
+                      <div className="absolute top-2 right-2">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium shadow-sm ${
+                            artwork.showStatus === "shown"
+                              ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                              : artwork.showStatus === "accepted"
+                              ? "bg-green-100 text-green-800 border border-green-200"
+                              : artwork.showStatus === "rejected"
+                              ? "bg-red-100 text-red-800 border border-red-200"
+                              : "bg-gray-100 text-gray-800 border border-gray-200"
+                          }`}
+                        >
+                          {artwork.showStatus === "rejected"
+                            ? "not selected"
+                            : artwork.showStatus === "accepted"
+                            ? "selected"
+                            : artwork.showStatus}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -139,7 +162,11 @@ const MyArtwork = () => {
                                 : "bg-red-100 text-red-800"
                             }`}
                           >
-                            {selectedArtwork.showStatus}
+                            {selectedArtwork.showStatus === "rejected"
+                              ? "not selected"
+                              : selectedArtwork.showStatus === "accepted"
+                              ? "selected"
+                              : selectedArtwork.showStatus}
                           </span>
                         </div>
                       )}

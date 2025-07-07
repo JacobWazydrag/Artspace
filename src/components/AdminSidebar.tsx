@@ -51,7 +51,7 @@ const Sidebar = () => {
       </div>
       <nav className="flex-1">
         <ul className="space-y-2">
-          <li>
+          {/* <li>
             <Link
               to="/dashboard"
               className={`block px-4 py-2 rounded ${
@@ -63,8 +63,8 @@ const Sidebar = () => {
                 Dashboard
               </span>
             </Link>
-          </li>
-          <li>
+          </li> */}
+          {/* <li>
             <Link
               to="/locations"
               className={`block px-4 py-2 rounded ${
@@ -76,7 +76,7 @@ const Sidebar = () => {
                 Locations
               </span>
             </Link>
-          </li>
+          </li> */}
           <li>
             <Link
               to="/artshows"
@@ -87,19 +87,6 @@ const Sidebar = () => {
               <span className="flex items-center gap-3">
                 <CalendarDaysIcon className="w-5 h-5" />
                 Art Shows
-              </span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/mediums"
-              className={`block px-4 py-2 rounded ${
-                isActive("/mediums") ? "bg-gray-900" : "hover:bg-gray-700"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <Squares2X2Icon className="w-5 h-5" />
-                Mediums
               </span>
             </Link>
           </li>
@@ -169,6 +156,19 @@ const Sidebar = () => {
               <span className="flex items-center gap-3">
                 <EnvelopeIcon className="w-5 h-5" />
                 Invitation
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/mediums"
+              className={`block px-4 py-2 rounded ${
+                isActive("/mediums") ? "bg-gray-900" : "hover:bg-gray-700"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <Squares2X2Icon className="w-5 h-5" />
+                Mediums
               </span>
             </Link>
           </li>

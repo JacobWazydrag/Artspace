@@ -13,6 +13,8 @@ import { toast } from "react-hot-toast";
 import ContentWrapper from "../../components/ContentWrapper";
 import { Artwork } from "../../types/artwork";
 import { NumericFormat } from "react-number-format";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "../../firebase";
 
 interface ImageGalleryProps {
   images: string[];
@@ -185,6 +187,7 @@ const UserArtworks = () => {
 
       const showStatus = assignmentData.artshowId ? "accepted" : "rejected";
 
+      // Update the artwork status
       await dispatch(
         updateArtworkShowStatus({
           artworkId: selectedArtworkId,
@@ -193,6 +196,35 @@ const UserArtworks = () => {
           showStatus,
         })
       ).unwrap();
+
+      // Update the artshow's artworkOrder array
+      if (assignmentData.artshowId) {
+        const artshowRef = doc(db, "artshows", assignmentData.artshowId);
+        const artshowDoc = await getDoc(artshowRef);
+        const artshowData = artshowDoc.data();
+        const currentArtworkOrder = artshowData?.artworkOrder || [];
+
+        if (showStatus === "accepted") {
+          // Add artwork to the end of the artworkOrder array
+          const updatedArtworkOrder = [
+            ...currentArtworkOrder,
+            selectedArtworkId,
+          ];
+          await updateDoc(artshowRef, {
+            artworkOrder: updatedArtworkOrder,
+            updatedAt: new Date().toISOString(),
+          });
+        } else {
+          // Remove artwork from the artworkOrder array
+          const updatedArtworkOrder = currentArtworkOrder.filter(
+            (id: string) => id !== selectedArtworkId
+          );
+          await updateDoc(artshowRef, {
+            artworkOrder: updatedArtworkOrder,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
 
       // Refresh the artworks list
       if (userId) {
@@ -226,7 +258,11 @@ const UserArtworks = () => {
           statusColors[artwork.showStatus]
         }`}
       >
-        {artwork.showStatus}
+        {artwork.showStatus === "rejected"
+          ? "not selected"
+          : artwork.showStatus === "accepted"
+          ? "selected"
+          : artwork.showStatus}
       </span>
     );
   };
@@ -444,6 +480,12 @@ const UserArtworks = () => {
                     type="button"
                     onClick={async () => {
                       try {
+                        // Get the current artwork to find its artshowId
+                        const artwork = artworks.find(
+                          (a) => a.id === selectedArtworkId
+                        );
+                        const currentArtshowId = artwork?.artshowId;
+
                         await dispatch(
                           updateArtworkShowStatus({
                             artworkId: selectedArtworkId!,
@@ -452,6 +494,29 @@ const UserArtworks = () => {
                             showStatus: "rejected",
                           })
                         ).unwrap();
+
+                        // Update the artshow's artworkOrder array if the artwork was in a show
+                        if (currentArtshowId) {
+                          const artshowRef = doc(
+                            db,
+                            "artshows",
+                            currentArtshowId
+                          );
+                          const artshowDoc = await getDoc(artshowRef);
+                          const artshowData = artshowDoc.data();
+                          const currentArtworkOrder =
+                            artshowData?.artworkOrder || [];
+
+                          // Remove artwork from the artworkOrder array
+                          const updatedArtworkOrder =
+                            currentArtworkOrder.filter(
+                              (id: string) => id !== selectedArtworkId
+                            );
+                          await updateDoc(artshowRef, {
+                            artworkOrder: updatedArtworkOrder,
+                            updatedAt: new Date().toISOString(),
+                          });
+                        }
 
                         // Refresh the artworks list
                         if (userId) {

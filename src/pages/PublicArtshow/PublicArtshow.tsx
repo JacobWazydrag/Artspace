@@ -137,6 +137,68 @@ const CollapsibleDescription = ({ text }: { text: string }) => {
   );
 };
 
+const BioModal = ({
+  artist,
+  isOpen,
+  onClose,
+}: {
+  artist: { name: string; bio: string; photoUrl?: string | null };
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">About the Artist</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex items-center mb-4">
+          <img
+            src={
+              artist.photoUrl ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                artist.name || "Artist"
+              )}`
+            }
+            alt={artist.name}
+            className="w-16 h-16 rounded-full object-cover mr-4"
+          />
+          <h3 className="text-xl font-bold text-gray-900">{artist.name}</h3>
+        </div>
+
+        <p className="text-gray-700 leading-relaxed">{artist.bio}</p>
+      </div>
+    </div>
+  );
+};
+
 const ArtistGallery = ({
   artworks,
   isOpen,
@@ -250,6 +312,11 @@ const PublicArtshow = () => {
     name: string;
     artworks: any[];
   } | null>(null);
+  const [selectedArtistBio, setSelectedArtistBio] = useState<{
+    name: string;
+    bio: string;
+    photoUrl?: string | null;
+  } | null>(null);
 
   useEffect(() => {
     dispatch(fetchPublicArtshowData());
@@ -357,26 +424,43 @@ const PublicArtshow = () => {
                       <h3 className="text-xl font-bold text-gray-900">
                         {artist.name || "Artist"}
                       </h3>
-                      <p className="text-gray-600">{artist.email}</p>
+                      {artist.socialLinks?.instagram && (
+                        <p className="text-gray-600">
+                          Instagram: {artist.socialLinks.instagram}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <p className="text-gray-700 mb-4">{artist.bio}</p>
 
-                  {artistArtworks.length > 0 && (
+                  <div className="flex gap-2">
                     <button
                       onClick={() =>
-                        setSelectedArtist({
-                          id: artist.id || "",
+                        setSelectedArtistBio({
                           name: artist.name || "Artist",
-                          artworks: artistArtworks,
+                          bio: artist.bio || "",
+                          photoUrl: artist.photoUrl,
                         })
                       }
-                      className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors duration-200"
+                      className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors duration-200"
                     >
-                      View {artistArtworks.length} Artwork
-                      {artistArtworks.length !== 1 ? "s" : ""}
+                      About the Artist
                     </button>
-                  )}
+                    {artistArtworks.length > 0 && (
+                      <button
+                        onClick={() =>
+                          setSelectedArtist({
+                            id: artist.id || "",
+                            name: artist.name || "Artist",
+                            artworks: artistArtworks,
+                          })
+                        }
+                        className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors duration-200"
+                      >
+                        View {artistArtworks.length} Artwork
+                        {artistArtworks.length !== 1 ? "s" : ""}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             );
@@ -402,6 +486,14 @@ const PublicArtshow = () => {
           isOpen={true}
           onClose={() => setSelectedArtist(null)}
           artistName={selectedArtist.name}
+        />
+      )}
+
+      {selectedArtistBio && (
+        <BioModal
+          artist={selectedArtistBio}
+          isOpen={true}
+          onClose={() => setSelectedArtistBio(null)}
         />
       )}
     </div>

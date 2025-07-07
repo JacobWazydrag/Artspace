@@ -191,7 +191,7 @@ const App = () => {
                 ) : profile?.role === "on-boarding-awaiting-approval" ? (
                   <Navigate to="/waiting-approval" replace />
                 ) : profile?.role === "admin" ? (
-                  <Navigate to="/dashboard" replace />
+                  <Navigate to="/users" replace />
                 ) : profile?.role === "artist" ? (
                   <Navigate to="/artist/my-artwork" replace />
                 ) : (

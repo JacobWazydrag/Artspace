@@ -13,6 +13,7 @@ import ContentWrapper from "../../components/ContentWrapper";
 import { formClasses } from "../../classes/tailwindClasses";
 import { fetchArtshows } from "../../features/artshowsSlice";
 import { fetchArtistArtworks } from "../../features/artworkSlice";
+import { fetchMediums } from "../../features/mediumsSlice";
 import {
   doc,
   updateDoc,
@@ -25,6 +26,8 @@ import {
 import { db } from "../../firebase";
 import { toast } from "react-hot-toast";
 import { NumericFormat } from "react-number-format";
+import { sendMail } from "../../features/mailSlice";
+import { mergeEmailConfig } from "../../utils/emailConfig";
 
 interface FilterState {
   search: string;
@@ -45,6 +48,7 @@ const Users = () => {
   const { data: locations } = useAppSelector((state) => state.locations);
   const { data: artshows } = useAppSelector((state) => state.artshows);
   const { data: artworks } = useAppSelector((state) => state.artwork);
+  const { data: mediums } = useAppSelector((state) => state.mediums);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAcceptShowModalOpen, setIsAcceptShowModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
@@ -62,7 +66,7 @@ const Users = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterState>({
     search: "",
-    roles: [],
+    roles: ["artist", "on-boarding"],
     statuses: [],
     interestInShow: [],
   });
@@ -78,6 +82,7 @@ const Users = () => {
     dispatch(fetchUsers());
     const unsubscribe = dispatch(listenToUsers());
     dispatch(fetchArtshows());
+    dispatch(fetchMediums());
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
@@ -280,6 +285,86 @@ const Users = () => {
       });
 
       await Promise.all(updatePromises);
+
+      // Send congratulatory email to the accepted user
+      try {
+        const selectedArtworksCount = acceptShowData.selectedArtworks.length;
+        const artshowName =
+          artshows.find((show) => show.id === acceptShowData.artshowId)?.name ||
+          "the art show";
+        const locationName =
+          locations.find((loc) => loc.id === acceptShowData.locationId)?.name ||
+          "the studio";
+
+        const mailData = mergeEmailConfig({
+          replyTo: "artspacechicago@gmail.com",
+          toUids: [selectedUser.id!],
+          message: {
+            subject:
+              "🎉 Congratulations! You've Been Accepted into the Art Show!",
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; border-radius: 10px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <h1 style="color: #6b46c1; margin: 0; font-size: 28px;">🎨 ArtSpace Chicago</h1>
+                  <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">Art Show Acceptance</p>
+                </div>
+                
+                <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                  <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px;">Congratulations! 🎉</h2>
+                  
+                  <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+                    Dear <strong>${selectedUser.name}</strong>,
+                  </p>
+                  
+                  <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+                    We are thrilled to inform you that your artwork has been accepted into <strong>${artshowName}</strong>!
+                  </p>
+                  
+                  <div style="background-color: #f0f4ff; padding: 20px; border-radius: 6px; border-left: 4px solid #6b46c1; margin-bottom: 25px;">
+                    <h3 style="color: #6b46c1; margin: 0 0 15px 0; font-size: 18px;">Acceptance Details:</h3>
+                    <p style="margin: 8px 0; color: #333;"><strong>Art Show:</strong> ${artshowName}</p>
+                    <p style="margin: 8px 0; color: #333;"><strong>Location:</strong> 3418 W. Armitage Ave, Chicago, Illinois 60647</p>
+                    <p style="margin: 8px 0; color: #333;"><strong>Artworks Accepted:</strong> Log into your portal to see which artworks were accepted.</p>
+                    <p style="margin: 8px 0; color: #333;"><strong>Status:</strong> <span style="color: #48bb78; font-weight: 600;">Accepted</span></p>
+                  </div>
+                  
+                  <div style="background-color: #e8f5e8; padding: 20px; border-radius: 6px; border-left: 4px solid #48bb78; margin-bottom: 25px;">
+                    <h3 style="color: #2f855a; margin: 0 0 15px 0; font-size: 18px;">🚀 Next Steps:</h3>
+                    <p style="margin: 0 0 15px 0; color: #2f855a;">
+                      <strong>You will be notified of drop off dates and times through your portal messaging.</strong>
+                    </p>
+                  </div>
+                  
+                  <div style="background-color: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+                    <p style="margin: 0; color: #856404; font-size: 14px;">
+                      <strong>Important:</strong> Please ensure your artwork is properly prepared and ready for installation. 
+                      All packing materials will need to be taken with you after dropoff.
+                    </p>
+                  </div>
+                  
+                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <p style="color: #666; font-size: 14px; margin: 0;">
+                      We're excited to have you as part of this exhibition! If you have any questions, 
+                      please don't hesitate to reach out to us.
+                    </p>
+                  </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                  <p>ArtSpace Chicago - Supporting Emerging Artists</p>
+                  <p>📍 3418 W. Armitage Ave, Chicago, Illinois 60647</p>
+                </div>
+              </div>
+            `,
+          },
+        });
+
+        await dispatch(sendMail(mailData)).unwrap();
+      } catch (emailError) {
+        console.error("Failed to send acceptance email:", emailError);
+        // Don't fail the acceptance process if email fails
+      }
+
       setIsAcceptShowModalOpen(false);
       dispatch(fetchUsers());
       toast.success("User accepted into show successfully");
@@ -379,10 +464,23 @@ const Users = () => {
     setSelectedUser(null);
   };
 
+  const getMediumName = (mediumId: string) => {
+    const medium = mediums?.find((m) => m.id === mediumId);
+    return medium?.name || mediumId;
+  };
+
   const filteredUsers = useMemo(() => {
     return users
       .filter((user) => {
-        if (currentUser && user.id === currentUser.id) return false;
+        // Exclude current user from the list (check both id and email)
+        if (
+          currentUser &&
+          (user.id === currentUser.id || user.email === currentUser.email)
+        ) {
+          return false;
+        }
+
+        // Apply search filter
         if (
           filters.search &&
           !user.name.toLowerCase().includes(filters.search.toLowerCase()) &&
@@ -390,21 +488,28 @@ const Users = () => {
         ) {
           return false;
         }
+
+        // Apply role filter (defaults to artist and on-boarding)
         if (filters.roles.length > 0 && !filters.roles.includes(user.role)) {
           return false;
         }
+
+        // Apply status filter
         if (
           filters.statuses.length > 0 &&
           !filters.statuses.includes(user.status || "")
         ) {
           return false;
         }
+
+        // Apply art show interest filter
         if (
           filters.interestInShow.length > 0 &&
           !filters.interestInShow.includes(user.interestInShow || "")
         ) {
           return false;
         }
+
         return true;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -714,14 +819,14 @@ const Users = () => {
                 onClick={() =>
                   setFilters({
                     search: "",
-                    roles: [],
+                    roles: ["artist", "on-boarding"],
                     statuses: [],
                     interestInShow: [],
                   })
                 }
                 className="text-sm text-gray-600 hover:text-gray-900 font-medium"
               >
-                Clear all filters
+                Reset filters
               </button>
             </div>
           )}
@@ -996,75 +1101,115 @@ const Users = () => {
 
                   <div>
                     <label className={label}>Select Artworks</label>
-                    <div className="mt-2 max-h-60 overflow-y-auto border rounded-md p-4">
+                    <div className="mt-2 max-h-96 overflow-y-auto border rounded-md p-4">
                       {artworks.length > 0 ? (
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 gap-4">
                           {artworks.map((artwork) => (
                             <div
                               key={artwork.id}
-                              className="flex items-center space-x-3"
-                            >
-                              <input
-                                type="checkbox"
-                                id={`artwork-${artwork.id}`}
-                                checked={acceptShowData.selectedArtworks.includes(
+                              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                                acceptShowData.selectedArtworks.includes(
                                   artwork.id!
-                                )}
-                                onChange={(e) => {
-                                  setAcceptShowData((prev) => ({
-                                    ...prev,
-                                    selectedArtworks: e.target.checked
-                                      ? [...prev.selectedArtworks, artwork.id!]
-                                      : prev.selectedArtworks.filter(
+                                )
+                                  ? "border-blue-500 bg-blue-50"
+                                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                              }`}
+                              onClick={() => {
+                                setAcceptShowData((prev) => ({
+                                  ...prev,
+                                  selectedArtworks:
+                                    prev.selectedArtworks.includes(artwork.id!)
+                                      ? prev.selectedArtworks.filter(
                                           (id) => id !== artwork.id
-                                        ),
-                                  }));
-                                }}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                              />
-                              <label
-                                htmlFor={`artwork-${artwork.id}`}
-                                className="flex-1 cursor-pointer"
-                              >
-                                <div className="flex items-center space-x-3">
-                                  {artwork.images[0] && (
-                                    <img
-                                      src={artwork.images[0]}
-                                      alt={artwork.title}
-                                      className="h-12 w-12 object-cover rounded"
-                                    />
+                                        )
+                                      : [...prev.selectedArtworks, artwork.id!],
+                                }));
+                              }}
+                            >
+                              <div className="flex items-start space-x-4">
+                                <input
+                                  type="checkbox"
+                                  id={`artwork-${artwork.id}`}
+                                  checked={acceptShowData.selectedArtworks.includes(
+                                    artwork.id!
                                   )}
-                                  <div>
-                                    <p className="text-sm font-medium text-gray-900">
-                                      {artwork.title}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      {artwork.medium} • {artwork.height}x
-                                      {artwork.width} {artwork.uom}
-                                    </p>
-                                    {artwork.price && (
-                                      <p className="text-xs text-gray-600 font-medium">
-                                        <NumericFormat
-                                          value={artwork.price}
-                                          thousandSeparator=","
-                                          decimalSeparator="."
-                                          prefix="$"
-                                          decimalScale={2}
-                                          fixedDecimalScale
-                                          displayType="text"
-                                        />
-                                      </p>
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    setAcceptShowData((prev) => ({
+                                      ...prev,
+                                      selectedArtworks: e.target.checked
+                                        ? [
+                                            ...prev.selectedArtworks,
+                                            artwork.id!,
+                                          ]
+                                        : prev.selectedArtworks.filter(
+                                            (id) => id !== artwork.id
+                                          ),
+                                    }));
+                                  }}
+                                  className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+                                />
+                                <div className="flex-1">
+                                  <div className="flex items-start space-x-4">
+                                    {artwork.images[0] && (
+                                      <img
+                                        src={artwork.images[0]}
+                                        alt={artwork.title}
+                                        className="h-64 w-64 object-contain rounded-lg shadow-sm bg-gray-100"
+                                      />
                                     )}
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                                        {artwork.title}
+                                      </h4>
+                                      <div className="space-y-1">
+                                        <p className="text-sm text-gray-600">
+                                          <span className="font-medium">
+                                            Medium:
+                                          </span>{" "}
+                                          {getMediumName(artwork.medium)}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                          <span className="font-medium">
+                                            Dimensions:
+                                          </span>{" "}
+                                          {artwork.height} × {artwork.width}{" "}
+                                          {artwork.uom}
+                                        </p>
+                                        {artwork.price && (
+                                          <p className="text-sm text-gray-600">
+                                            <span className="font-medium">
+                                              Price:
+                                            </span>{" "}
+                                            <NumericFormat
+                                              value={artwork.price}
+                                              thousandSeparator=","
+                                              decimalSeparator="."
+                                              prefix="$"
+                                              decimalScale={2}
+                                              fixedDecimalScale
+                                              displayType="text"
+                                              className="font-semibold text-green-600"
+                                            />
+                                          </p>
+                                        )}
+                                        {artwork.description && (
+                                          <p className="text-sm text-gray-500 mt-2 line-clamp-2">
+                                            {artwork.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                              </label>
+                              </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-500">
-                          No artworks found
-                        </p>
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">No artworks found</p>
+                        </div>
                       )}
                     </div>
                   </div>
