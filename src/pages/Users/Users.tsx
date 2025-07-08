@@ -317,7 +317,7 @@ const Users = () => {
                   </p>
                   
                   <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
-                    We are thrilled to inform you that your artwork has been accepted into <strong>${artshowName}</strong>!
+                    We are thrilled to inform you that your artwork has been accepted into <strong>${artshowName}</strong>! 
                   </p>
                   
                   <div style="background-color: #f0f4ff; padding: 20px; border-radius: 6px; border-left: 4px solid #6b46c1; margin-bottom: 25px;">

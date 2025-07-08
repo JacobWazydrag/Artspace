@@ -167,13 +167,11 @@ const UserArtworks = () => {
 
   const handleShowAssignment = (artworkId: string) => {
     setSelectedArtworkId(artworkId);
-    const artwork = artworks.find((a) => a.id === artworkId);
-    if (artwork) {
-      setAssignmentData({
-        artshowId: artwork.artshowId || "",
-        locationId: artwork.locationId || "",
-      });
-    }
+    // Always start with empty dropdowns for a fresh selection
+    setAssignmentData({
+      artshowId: "",
+      locationId: "",
+    });
     setShowAssignmentModal(true);
   };
 
@@ -205,15 +203,17 @@ const UserArtworks = () => {
         const currentArtworkOrder = artshowData?.artworkOrder || [];
 
         if (showStatus === "accepted") {
-          // Add artwork to the end of the artworkOrder array
-          const updatedArtworkOrder = [
-            ...currentArtworkOrder,
-            selectedArtworkId,
-          ];
-          await updateDoc(artshowRef, {
-            artworkOrder: updatedArtworkOrder,
-            updatedAt: new Date().toISOString(),
-          });
+          // Only add artwork if it's not already in the array
+          if (!currentArtworkOrder.includes(selectedArtworkId)) {
+            const updatedArtworkOrder = [
+              ...currentArtworkOrder,
+              selectedArtworkId,
+            ];
+            await updateDoc(artshowRef, {
+              artworkOrder: updatedArtworkOrder,
+              updatedAt: new Date().toISOString(),
+            });
+          }
         } else {
           // Remove artwork from the artworkOrder array
           const updatedArtworkOrder = currentArtworkOrder.filter(
@@ -224,6 +224,22 @@ const UserArtworks = () => {
             updatedAt: new Date().toISOString(),
           });
         }
+      }
+
+      // If we're removing from current show, also update that show's artworkOrder
+      if (artwork.artshowId && artwork.artshowId !== assignmentData.artshowId) {
+        const currentArtshowRef = doc(db, "artshows", artwork.artshowId);
+        const currentArtshowDoc = await getDoc(currentArtshowRef);
+        const currentArtshowData = currentArtshowDoc.data();
+        const currentArtworkOrder = currentArtshowData?.artworkOrder || [];
+
+        const updatedArtworkOrder = currentArtworkOrder.filter(
+          (id: string) => id !== selectedArtworkId
+        );
+        await updateDoc(currentArtshowRef, {
+          artworkOrder: updatedArtworkOrder,
+          updatedAt: new Date().toISOString(),
+        });
       }
 
       // Refresh the artworks list
@@ -476,70 +492,99 @@ const UserArtworks = () => {
                   >
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        // Get the current artwork to find its artshowId
-                        const artwork = artworks.find(
-                          (a) => a.id === selectedArtworkId
-                        );
-                        const currentArtshowId = artwork?.artshowId;
 
-                        await dispatch(
-                          updateArtworkShowStatus({
-                            artworkId: selectedArtworkId!,
-                            artshowId: "",
-                            locationId: "",
-                            showStatus: "rejected",
-                          })
-                        ).unwrap();
+                  {/* Show Reject button only if artwork is currently accepted */}
+                  {(() => {
+                    const currentArtwork = artworks.find(
+                      (a) => a.id === selectedArtworkId
+                    );
+                    const isAccepted =
+                      currentArtwork?.showStatus === "accepted";
+                    const isRejected =
+                      currentArtwork?.showStatus === "rejected" ||
+                      !currentArtwork?.showStatus;
+                    const hasRequiredSelections =
+                      assignmentData.artshowId && assignmentData.locationId;
 
-                        // Update the artshow's artworkOrder array if the artwork was in a show
-                        if (currentArtshowId) {
-                          const artshowRef = doc(
-                            db,
-                            "artshows",
-                            currentArtshowId
-                          );
-                          const artshowDoc = await getDoc(artshowRef);
-                          const artshowData = artshowDoc.data();
-                          const currentArtworkOrder =
-                            artshowData?.artworkOrder || [];
+                    return (
+                      <>
+                        {isAccepted && (
+                          <button
+                            type="button"
+                            disabled={!hasRequiredSelections}
+                            onClick={async () => {
+                              try {
+                                // Get the current artwork to find its artshowId
+                                const artwork = artworks.find(
+                                  (a) => a.id === selectedArtworkId
+                                );
+                                const currentArtshowId = artwork?.artshowId;
 
-                          // Remove artwork from the artworkOrder array
-                          const updatedArtworkOrder =
-                            currentArtworkOrder.filter(
-                              (id: string) => id !== selectedArtworkId
-                            );
-                          await updateDoc(artshowRef, {
-                            artworkOrder: updatedArtworkOrder,
-                            updatedAt: new Date().toISOString(),
-                          });
-                        }
+                                await dispatch(
+                                  updateArtworkShowStatus({
+                                    artworkId: selectedArtworkId!,
+                                    artshowId: "",
+                                    locationId: "",
+                                    showStatus: "rejected",
+                                  })
+                                ).unwrap();
 
-                        // Refresh the artworks list
-                        if (userId) {
-                          await dispatch(fetchArtistArtworks(userId));
-                        }
+                                // Update the artshow's artworkOrder array if the artwork was in a show
+                                if (currentArtshowId) {
+                                  const artshowRef = doc(
+                                    db,
+                                    "artshows",
+                                    currentArtshowId
+                                  );
+                                  const artshowDoc = await getDoc(artshowRef);
+                                  const artshowData = artshowDoc.data();
+                                  const currentArtworkOrder =
+                                    artshowData?.artworkOrder || [];
 
-                        toast.success("Artwork rejected from show");
-                        setShowAssignmentModal(false);
-                      } catch (error) {
-                        console.error("Error rejecting artwork:", error);
-                        toast.error("Failed to reject artwork");
-                      }
-                    }}
-                    className="bg-red-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Accept
-                  </button>
+                                  // Remove artwork from the artworkOrder array
+                                  const updatedArtworkOrder =
+                                    currentArtworkOrder.filter(
+                                      (id: string) => id !== selectedArtworkId
+                                    );
+                                  await updateDoc(artshowRef, {
+                                    artworkOrder: updatedArtworkOrder,
+                                    updatedAt: new Date().toISOString(),
+                                  });
+                                }
+
+                                // Refresh the artworks list
+                                if (userId) {
+                                  await dispatch(fetchArtistArtworks(userId));
+                                }
+
+                                toast.success("Artwork rejected from show");
+                                setShowAssignmentModal(false);
+                              } catch (error) {
+                                console.error(
+                                  "Error rejecting artwork:",
+                                  error
+                                );
+                                toast.error("Failed to reject artwork");
+                              }
+                            }}
+                            className="bg-red-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Reject
+                          </button>
+                        )}
+
+                        {isRejected && (
+                          <button
+                            type="submit"
+                            disabled={!hasRequiredSelections}
+                            className="bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Accept
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </form>
             </div>
