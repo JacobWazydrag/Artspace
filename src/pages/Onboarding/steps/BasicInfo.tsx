@@ -16,6 +16,7 @@ import {
 } from "firebase/storage";
 import { toast } from "react-hot-toast";
 import { fetchArtshows } from "../../../features/artshowsSlice";
+import { compressImageTo250KB } from "../../../utils/imageCompression";
 
 interface BasicInfoProps {
   onComplete: () => void;
@@ -78,11 +79,29 @@ const BasicInfo = ({ onComplete, isComplete }: BasicInfoProps) => {
     }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      try {
+        // Show loading state
+        setIsSubmitting(true);
+        toast.loading("Compressing image...", { id: "compression" });
+
+        // Compress the image to 250KB
+        const compressedFile = await compressImageTo250KB(file);
+
+        setSelectedFile(compressedFile);
+        setPreviewUrl(URL.createObjectURL(compressedFile));
+
+        toast.success("Image compressed successfully!", { id: "compression" });
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        toast.error("Failed to compress image. Please try again.", {
+          id: "compression",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 

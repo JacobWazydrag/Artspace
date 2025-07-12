@@ -5,6 +5,14 @@ import { db } from "../../firebase";
 import { fetchUserProfile, setProfileData } from "../../features/profileSlice";
 import { toast } from "react-hot-toast";
 import ContentWrapper from "../../components/ContentWrapper";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
+import { compressImageTo250KB } from "../../utils/imageCompression";
 
 const Settings = () => {
   const dispatch = useAppDispatch();
@@ -12,12 +20,133 @@ const Settings = () => {
   const { user } = useAppSelector((state) => state.auth);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const storage = getStorage();
 
   useEffect(() => {
     if (profile?.notificationPreferences?.email?.active !== undefined) {
       setEmailNotifications(profile.notificationPreferences.email.active);
     }
+    // Set initial preview URL from profile
+    if (profile?.photoUrl) {
+      setPreviewUrl(profile.photoUrl);
+    }
   }, [profile]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        // Show loading state
+        setIsSubmitting(true);
+        toast.loading("Compressing image...", { id: "compression" });
+
+        // Compress the image to 250KB
+        const compressedFile = await compressImageTo250KB(file);
+
+        setSelectedFile(compressedFile);
+        setPreviewUrl(URL.createObjectURL(compressedFile));
+
+        toast.success("Image compressed successfully!", { id: "compression" });
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        toast.error("Failed to compress image. Please try again.", {
+          id: "compression",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!profile?.id) return;
+
+    try {
+      setIsSubmitting(true);
+      // If there's an existing photo, delete it from storage
+      if (profile.photoUrl) {
+        const photoRef = ref(storage, profile.photoUrl);
+        await deleteObject(photoRef);
+      }
+
+      // Update the user document
+      const userRef = doc(db, "users", profile.id);
+      await updateDoc(userRef, {
+        photoUrl: null,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Update local state
+      setPreviewUrl(null);
+      setSelectedFile(null);
+
+      // Update profile state
+      dispatch(
+        setProfileData({
+          ...profile,
+          photoUrl: null,
+        })
+      );
+
+      toast.success("Profile photo removed successfully");
+    } catch (error) {
+      console.error("Error removing photo:", error);
+      toast.error("Failed to remove profile photo");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSavePhoto = async () => {
+    if (!profile?.id || !selectedFile) return;
+
+    setIsSubmitting(true);
+    try {
+      // If there's an existing photo, delete it first
+      if (profile.photoUrl) {
+        const oldPhotoRef = ref(storage, profile.photoUrl);
+        await deleteObject(oldPhotoRef);
+      }
+
+      // Use the authenticated user's UID for the folder
+      const userId = user?.id || profile.id;
+      const storageRef = ref(
+        storage,
+        `profile_photos/${userId}/${Date.now()}_${selectedFile.name}`
+      );
+      const snapshot = await uploadBytes(storageRef, selectedFile);
+      const photoUrl = await getDownloadURL(snapshot.ref);
+
+      const userRef = doc(db, "users", profile.id);
+      await updateDoc(userRef, {
+        photoUrl,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Update profile state
+      dispatch(
+        setProfileData({
+          ...profile,
+          photoUrl,
+        })
+      );
+
+      // Fetch the latest profile from the server
+      await dispatch(fetchUserProfile(profile.id)).unwrap();
+
+      // Clear the selected file
+      setSelectedFile(null);
+
+      toast.success("Profile photo updated successfully");
+    } catch (error) {
+      console.error("Error updating photo:", error);
+      toast.error("Failed to update profile photo");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleEmailNotificationChange = async (enabled: boolean) => {
     if (!user?.id || !profile) return;
@@ -72,6 +201,77 @@ const Settings = () => {
             <p className="text-gray-600 mt-2">
               Manage your account settings and preferences
             </p>
+          </div>
+
+          {/* Profile Photo Section */}
+          <div className="bg-white rounded-lg shadow-md mb-8">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Profile Photo
+              </h2>
+              <p className="text-gray-600 mt-1">Update your profile picture</p>
+            </div>
+            <div className="p-6">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative w-32 h-32 rounded-full overflow-hidden bg-gray-200">
+                  {previewUrl ? (
+                    <img
+                      src={previewUrl}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <svg
+                        className="w-16 h-16"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <label className="cursor-pointer bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                    {previewUrl ? "Change Photo" : "Add Photo"}
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                  {previewUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      disabled={isSubmitting}
+                      className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  )}
+                  {selectedFile && (
+                    <button
+                      type="button"
+                      onClick={handleSavePhoto}
+                      disabled={isSubmitting}
+                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {isSubmitting ? "Saving..." : "Save Photo"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-md">

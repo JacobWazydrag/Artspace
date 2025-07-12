@@ -18,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { Medium } from "../../../features/mediumsSlice";
 import { formClasses } from "../../../classes/tailwindClasses";
 import { NumericFormat } from "react-number-format";
+import { compressImageTo250KB } from "../../../utils/imageCompression";
 
 interface ArtworkUploadProps {
   onComplete: () => void;
@@ -344,11 +345,26 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      setSelectedFiles([files[0]]);
-      setPreviewUrls([URL.createObjectURL(files[0])]);
+      try {
+        // Show loading state
+        setLoadingArtworkId("compression");
+
+        // Compress the first image to 250KB
+        const compressedFile = await compressImageTo250KB(files[0]);
+
+        setSelectedFiles([compressedFile]);
+        setPreviewUrls([URL.createObjectURL(compressedFile)]);
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        // Still allow the original file if compression fails
+        setSelectedFiles([files[0]]);
+        setPreviewUrls([URL.createObjectURL(files[0])]);
+      } finally {
+        setLoadingArtworkId(null);
+      }
     }
   };
 

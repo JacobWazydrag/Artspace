@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import {
   fetchPublicArtshowData,
@@ -9,6 +9,7 @@ import {
   updateSingleArtwork,
 } from "../../features/artworkSlice";
 import { fetchUsers } from "../../features/usersSlice";
+import { fetchMediums } from "../../features/mediumsSlice";
 import { motion, AnimatePresence } from "framer-motion";
 import { NumericFormat } from "react-number-format";
 import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
@@ -21,6 +22,194 @@ interface ImageGalleryProps {
   initialIndex?: number;
   artwork?: any;
 }
+
+interface LazyArtworkCardProps {
+  artwork: any;
+  index: number;
+  users: any[];
+  mediums: any[];
+  onArtworkClick: (artwork: any) => void;
+  onArtistClick: (artist: any) => void;
+}
+
+// Skeleton component for loading state
+const ArtworkSkeleton = () => (
+  <div className="bg-white rounded-2xl shadow-lg overflow-hidden animate-pulse">
+    <div className="aspect-square bg-gray-200"></div>
+    <div className="p-6">
+      <div className="h-6 bg-gray-200 rounded mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/2 mb-3"></div>
+      <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+    </div>
+  </div>
+);
+
+// Lazy artwork card component with intersection observer
+const LazyArtworkCard = ({
+  artwork,
+  index,
+  users,
+  mediums,
+  onArtworkClick,
+  onArtistClick,
+}: LazyArtworkCardProps) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const getMediumName = (mediumId: string) => {
+    const medium = mediums?.find((m) => m.id === mediumId);
+    return medium?.name || mediumId;
+  };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      {
+        rootMargin: "200px", // Start loading 200px before entering viewport
+        threshold: 0.1,
+      }
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => {
+      if (cardRef.current) {
+        observer.unobserve(cardRef.current);
+      }
+    };
+  }, []);
+
+  // Start loading image when visible
+  useEffect(() => {
+    if (isVisible && artwork.images && artwork.images[0]) {
+      const img = new Image();
+      img.onload = () => setIsLoaded(true);
+      img.onerror = () => setIsLoaded(true); // Show card even if image fails
+      img.src = artwork.images[0];
+    } else if (isVisible && (!artwork.images || !artwork.images[0])) {
+      // No image to load, show card immediately
+      setIsLoaded(true);
+    }
+  }, [isVisible, artwork.images]);
+
+  if (!isVisible || !isLoaded) {
+    return (
+      <div ref={cardRef} className="cursor-pointer">
+        <ArtworkSkeleton />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      ref={cardRef}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.5,
+        delay: index * 0.05, // Reduced delay for better perceived performance
+        ease: "easeOut",
+      }}
+      className="cursor-pointer"
+      onClick={() => onArtworkClick(artwork)}
+    >
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        {/* Image Container */}
+        <div className="relative overflow-hidden aspect-square bg-gray-100">
+          {artwork.images && artwork.images[0] ? (
+            <img
+              src={artwork.images[0]}
+              alt={artwork.title}
+              className="w-full h-full object-cover transition-opacity duration-300"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+              <svg
+                className="w-16 h-16 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+          )}
+
+          {/* Position Badge */}
+          <div className="absolute top-4 left-4 bg-white bg-opacity-90 text-gray-900 px-3 py-1 rounded-full text-sm font-bold">
+            #{index + 1}
+          </div>
+
+          {/* SOLD Banner */}
+          {artwork.sold && (
+            <div className="absolute right-0 top-0 h-16 w-16 pointer-events-none">
+              <div className="absolute transform rotate-45 bg-red-600 text-center text-white font-semibold py-1 right-[-35px] top-[32px] w-[170px]">
+                SOLD
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            {artwork.title.length > 16
+              ? `${artwork.title.substring(0, 16)}...`
+              : artwork.title}
+          </h3>
+
+          <p
+            className="text-indigo-600 font-semibold mb-2 cursor-pointer hover:text-indigo-800 transition-colors duration-200"
+            onClick={(e) => {
+              e.stopPropagation();
+              const artist = users.find((user) => user.id === artwork.artistId);
+              if (artist) {
+                onArtistClick(artist);
+              }
+            }}
+          >
+            {artwork.artistName}
+          </p>
+
+          <p className="text-gray-600 text-sm mb-3">
+            {getMediumName(artwork.medium)} • {artwork.height} × {artwork.width}{" "}
+            {artwork.uom}
+          </p>
+
+          {artwork.price && (
+            <p className="text-2xl font-bold text-gray-900">
+              <NumericFormat
+                value={artwork.price}
+                thousandSeparator=","
+                decimalSeparator="."
+                prefix="$"
+                decimalScale={2}
+                fixedDecimalScale
+                displayType="text"
+              />
+            </p>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 const ArtistModal = ({
   artist,
@@ -176,6 +365,7 @@ const PublicArtshowArtworks = () => {
     dispatch(fetchPublicArtshowData());
     dispatch(fetchAllArtworks());
     dispatch(fetchUsers());
+    dispatch(fetchMediums());
   }, [dispatch]);
 
   // Live listener for artshow updates
@@ -267,10 +457,15 @@ const PublicArtshowArtworks = () => {
     return medium?.name || mediumId;
   };
 
-  const handleArtworkClick = (artwork: any) => {
+  const handleArtworkClick = useCallback((artwork: any) => {
     setSelectedArtwork(artwork);
     setGalleryOpen(true);
-  };
+  }, []);
+
+  const handleArtistClick = useCallback((artist: any) => {
+    setSelectedArtist(artist);
+    setArtistModalOpen(true);
+  }, []);
 
   // Helper function to get thumbnail URL for Firebase Storage images
   const getThumbnailUrl = (originalUrl: string) => {
@@ -314,32 +509,87 @@ const PublicArtshowArtworks = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white">
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              {activeArtshow.name}
-            </h1>
-            <p className="text-xl md:text-2xl mb-4 opacity-90">
-              {new Date(
-                activeArtshow.startDate + "T00:00:00"
-              ).toLocaleDateString()}{" "}
-              -{" "}
-              {new Date(
-                activeArtshow.endDate + "T00:00:00"
-              ).toLocaleDateString()}
-            </p>
-            <p className="text-lg md:text-xl opacity-80 max-w-3xl mx-auto">
-              {activeArtshow.description}
-            </p>
-            {/* <div className="mt-8">
-              <a
-                href="/artshow"
-                className="inline-flex items-center px-6 py-3 bg-white text-indigo-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200"
-              >
-                ← Back to Show Overview
-              </a>
-            </div> */}
+      <section className="bg-black">
+        <div className="container mx-auto px-4 md:px-8 lg:px-4 py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[60vh]">
+            {/* Image Section */}
+            <div className="hidden lg:block order-2 lg:order-1">
+              {activeArtshow.photoUrl ? (
+                <div className="relative w-full h-[450px] md:h-[550px] lg:h-[650px] rounded-2xl overflow-hidden shadow-2xl">
+                  <img
+                    src={activeArtshow.photoUrl}
+                    alt={activeArtshow.name}
+                    className="w-full h-full object-cover object-center"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                </div>
+              ) : (
+                <div className="w-full h-[400px] md:h-[500px] lg:h-[600px] bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 rounded-2xl shadow-2xl flex items-center justify-center">
+                  <div className="text-white text-center">
+                    <svg
+                      className="w-24 h-24 mx-auto mb-4 opacity-50"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <p className="text-lg opacity-75">Exhibition Image</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Content Section */}
+            <div className="order-1 lg:order-2 space-y-6">
+              <div>
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-4">
+                  {activeArtshow.name}
+                </h1>
+                <div className="w-24 h-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full mb-6"></div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
+                  <p className="text-xl md:text-2xl text-gray-200 font-medium">
+                    {new Date(
+                      activeArtshow.startDate + "T00:00:00"
+                    ).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                  <p className="text-xl md:text-2xl text-gray-200 font-medium">
+                    {new Date(
+                      activeArtshow.endDate + "T00:00:00"
+                    ).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
+                  {activeArtshow.description}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -364,110 +614,18 @@ const PublicArtshowArtworks = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            <AnimatePresence>
-              {orderedArtworks.map((artwork, index) => (
-                <motion.div
-                  key={artwork.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.5,
-                    delay: index * 0.1,
-                    ease: "easeOut",
-                  }}
-                  className="cursor-pointer"
-                  onClick={() => handleArtworkClick(artwork)}
-                >
-                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                    {/* Image Container */}
-                    <div className="relative overflow-hidden aspect-square bg-gray-100">
-                      {artwork.images && artwork.images[0] ? (
-                        <img
-                          src={artwork.images[0]}
-                          alt={artwork.title}
-                          className="w-full h-full object-cover transition-opacity duration-300"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                          <svg
-                            className="w-16 h-16 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-
-                      {/* Position Badge */}
-                      <div className="absolute top-4 left-4 bg-white bg-opacity-90 text-gray-900 px-3 py-1 rounded-full text-sm font-bold">
-                        #{index + 1}
-                      </div>
-
-                      {/* SOLD Banner */}
-                      {artwork.sold && (
-                        <div className="absolute right-0 top-0 h-16 w-16 pointer-events-none">
-                          <div className="absolute transform rotate-45 bg-red-600 text-center text-white font-semibold py-1 right-[-35px] top-[32px] w-[170px]">
-                            SOLD
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        {artwork.title}
-                      </h3>
-
-                      <p
-                        className="text-indigo-600 font-semibold mb-2 cursor-pointer hover:text-indigo-800 transition-colors duration-200"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const artist = users.find(
-                            (user) => user.id === artwork.artistId
-                          );
-                          if (artist) {
-                            setSelectedArtist(artist);
-                            setArtistModalOpen(true);
-                          }
-                        }}
-                      >
-                        {artwork.artistName}
-                      </p>
-
-                      <p className="text-gray-600 text-sm mb-3">
-                        {getMediumName(artwork.medium)} • {artwork.height} ×{" "}
-                        {artwork.width} {artwork.uom}
-                      </p>
-
-                      {artwork.price && (
-                        <p className="text-2xl font-bold text-gray-900">
-                          <NumericFormat
-                            value={artwork.price}
-                            thousandSeparator=","
-                            decimalSeparator="."
-                            prefix="$"
-                            decimalScale={2}
-                            fixedDecimalScale
-                            displayType="text"
-                          />
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+            {orderedArtworks.map((artwork, index) => (
+              <LazyArtworkCard
+                key={artwork.id}
+                artwork={artwork}
+                index={index}
+                users={users}
+                mediums={mediums}
+                onArtworkClick={handleArtworkClick}
+                onArtistClick={handleArtistClick}
+              />
+            ))}
           </div>
         )}
       </section>
@@ -476,7 +634,7 @@ const PublicArtshowArtworks = () => {
       <footer className="bg-gray-900 text-white py-12">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <h2 className="text-3xl font-bold mb-4">ArtSpace</h2>
+            <h2 className="text-3xl font-bold mb-4">ArtSpace Chicago</h2>
             <p className="text-gray-400 text-lg">
               Thoughtfully curated emerging artists exhibitions
             </p>

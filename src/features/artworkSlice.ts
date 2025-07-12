@@ -21,6 +21,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
+import { compressImageTo250KB } from "../utils/imageCompression";
 
 export interface Artwork {
   id: string;
@@ -69,15 +70,18 @@ export const uploadArtwork = createAsyncThunk(
     images: File[];
   }) => {
     try {
-      // Upload images to Firebase Storage
+      // Compress and upload images to Firebase Storage
       const imageUrls = await Promise.all(
         images.map(async (image) => {
           try {
+            // Compress the image to 250KB before uploading
+            const compressedImage = await compressImageTo250KB(image);
+
             const storageRef = ref(
               storage,
-              `artworks/${Date.now()}_${image.name}`
+              `artworks/${Date.now()}_${compressedImage.name}`
             );
-            const snapshot = await uploadBytes(storageRef, image);
+            const snapshot = await uploadBytes(storageRef, compressedImage);
             return getDownloadURL(snapshot.ref);
           } catch (error: any) {
             console.error("Error uploading image:", error);
@@ -247,15 +251,18 @@ export const addArtworkImages = createAsyncThunk(
 
       await Promise.all(deletePromises);
 
-      // Upload new images to Firebase Storage
+      // Compress and upload new images to Firebase Storage
       const newImageUrls = await Promise.all(
         images.map(async (image) => {
           try {
+            // Compress the image to 250KB before uploading
+            const compressedImage = await compressImageTo250KB(image);
+
             const storageRef = ref(
               storage,
-              `artworks/${Date.now()}_${image.name}`
+              `artworks/${Date.now()}_${compressedImage.name}`
             );
-            const snapshot = await uploadBytes(storageRef, image);
+            const snapshot = await uploadBytes(storageRef, compressedImage);
             return getDownloadURL(snapshot.ref);
           } catch (error: any) {
             console.error("Error uploading image:", error);

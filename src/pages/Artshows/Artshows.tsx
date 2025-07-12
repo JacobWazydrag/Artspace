@@ -26,6 +26,7 @@ import {
 import { formClasses } from "../../classes/tailwindClasses";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
+import { compressImageTo250KB } from "../../utils/imageCompression";
 
 interface FilterState {
   search: string;
@@ -195,11 +196,26 @@ const Artshows = () => {
     }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      try {
+        // Show loading state
+        setPhotoLoading(true);
+
+        // Compress the image to 250KB
+        const compressedFile = await compressImageTo250KB(file);
+
+        setSelectedFile(compressedFile);
+        setPreviewUrl(URL.createObjectURL(compressedFile));
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        // Still allow the original file if compression fails
+        setSelectedFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
+      } finally {
+        setPhotoLoading(false);
+      }
     }
   };
 
