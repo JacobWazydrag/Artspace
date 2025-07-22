@@ -27,6 +27,7 @@ export interface UserProfile {
   updatedAt: string;
   photoUrl?: string | null;
   interestInShow?: string;
+  stripeId?: string;
   shownAtArtspace?: boolean;
   notificationPreferences?: {
     email: { active: boolean; frequency: "daily" | "weekly" | "monthly" };

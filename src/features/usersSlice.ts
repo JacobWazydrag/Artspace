@@ -38,6 +38,7 @@ export interface User {
   assignedLocations?: string[];
   interestInShow?: string;
   artshowId?: string;
+  stripeId?: string;
   shownAtArtspace?: boolean;
   paymentInformation?: {
     venmo?: string;

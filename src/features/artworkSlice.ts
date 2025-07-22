@@ -43,6 +43,7 @@ export interface Artwork {
   locationId?: string;
   showStatus?: "accepted" | "rejected" | "shown" | null;
   beenInShows?: string[];
+  productId?: string; // Stripe product ID
 }
 
 export interface ArtworkState {
@@ -515,6 +516,29 @@ export const fetchAllArtworks = createAsyncThunk(
   }
 );
 
+export const updateArtworkProductId = createAsyncThunk(
+  "artwork/updateProductId",
+  async ({
+    artworkId,
+    productId,
+  }: {
+    artworkId: string;
+    productId: string;
+  }) => {
+    try {
+      const artworkRef = doc(db, "artworks", artworkId);
+      await updateDoc(artworkRef, {
+        productId,
+        updatedAt: new Date().toISOString(),
+      });
+      return { artworkId, productId };
+    } catch (error: any) {
+      console.error("Error updating artwork product ID:", error);
+      throw error;
+    }
+  }
+);
+
 const artworkSlice = createSlice({
   name: "artwork",
   initialState,
@@ -668,6 +692,27 @@ const artworkSlice = createSlice({
       .addCase(fetchAllArtworks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to fetch artworks";
+      })
+      .addCase(updateArtworkProductId.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateArtworkProductId.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.data.findIndex(
+          (artwork) => artwork.id === action.payload.artworkId
+        );
+        if (index !== -1) {
+          state.data[index] = {
+            ...state.data[index],
+            productId: action.payload.productId,
+          };
+        }
+      })
+      .addCase(updateArtworkProductId.rejected, (state, action) => {
+        state.loading = false;
+        state.error =
+          action.error.message || "Failed to update artwork product ID";
       });
   },
 });

@@ -36,6 +36,8 @@ import { getDoc, doc } from "firebase/firestore";
 import { db } from "./firebase";
 import { fetchUserChats } from "./features/chatSlice";
 import PublicArtshowArtworks from "./pages/PublicArtshow/PublicArtshowArtworks";
+import TestCloudFunction from "./pages/TestCloudFunction/TestCloudFunction";
+import ProductManagement from "./pages/ProductManagement/ProductManagement";
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -68,6 +70,7 @@ const App = () => {
               assignedLocations: userData?.assignedLocations || [],
               interestInShow: userData?.interestInShow || "",
               artshowId: userData?.artshowId,
+              stripeId: userData?.stripeId,
             })
           );
 
@@ -171,6 +174,8 @@ const App = () => {
             <Route path="curate" element={<Curate />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="invitation" element={<Invitation />} />
+            <Route path="product-management" element={<ProductManagement />} />
+            <Route path="test-cloud-function" element={<TestCloudFunction />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

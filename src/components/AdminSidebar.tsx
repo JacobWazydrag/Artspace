@@ -17,6 +17,7 @@ import {
   EnvelopeIcon,
   Cog6ToothIcon,
   AdjustmentsHorizontalIcon,
+  ShoppingCartIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
 
@@ -172,6 +173,41 @@ const Sidebar = () => {
               </span>
             </Link>
           </li>
+          {/* Product Management and Test Cloud Function only for specific user */}
+          {user?.email === "jgw.jakegeorge@gmail.com" && (
+            <>
+              <li>
+                <Link
+                  to="/product-management"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/product-management")
+                      ? "bg-gray-900"
+                      : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <ShoppingCartIcon className="w-5 h-5" />
+                    Product Management
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/test-cloud-function"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/test-cloud-function")
+                      ? "bg-gray-900"
+                      : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <Cog6ToothIcon className="w-5 h-5" />
+                    Test Cloud Function
+                  </span>
+                </Link>
+              </li>
+            </>
+          )}
 
           {/* External Links */}
           <li>
