@@ -441,7 +441,7 @@ const PublicArtshow = () => {
                           photoUrl: artist.photoUrl,
                         })
                       }
-                      className="flex-1 bg-amber-500 text-white py-2 px-4 rounded-md hover:bg-amber-600 transition-colors duration-200"
+                      className="flex-1 bg-sky-500 text-white py-2 px-4 rounded-md hover:bg-sky-600 transition-colors duration-200"
                     >
                       About the Artist
                     </button>
