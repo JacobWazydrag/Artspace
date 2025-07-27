@@ -27,6 +27,7 @@ const Curate = () => {
   const [activeArtshow, setActiveArtshow] = useState<any>(null);
   const [orderedArtworks, setOrderedArtworks] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
 
   useEffect(() => {
     dispatch(fetchArtshows());
@@ -41,7 +42,12 @@ const Curate = () => {
   }, [artshows]);
 
   useEffect(() => {
-    if (activeArtshow && artworks.length > 0 && users.length > 0) {
+    if (
+      activeArtshow &&
+      artworks.length > 0 &&
+      users.length > 0 &&
+      !hasLocalChanges
+    ) {
       // Get the artworkOrder array from the artshow
       const artworkOrder = activeArtshow.artworkOrder || [];
 
@@ -63,10 +69,11 @@ const Curate = () => {
 
       setOrderedArtworks(ordered);
     }
-  }, [activeArtshow, artworks, users]);
+  }, [activeArtshow, artworks, users, hasLocalChanges]);
 
   const handleReorder = (newOrder: any[]) => {
     setOrderedArtworks(newOrder);
+    setHasLocalChanges(true);
   };
 
   const handleSaveOrder = async () => {
@@ -82,6 +89,14 @@ const Curate = () => {
         updatedAt: new Date().toISOString(),
       });
 
+      // Update the local activeArtshow state to reflect the new order
+      setActiveArtshow({
+        ...activeArtshow,
+        artworkOrder: newArtworkOrder,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setHasLocalChanges(false);
       toast.success("Artwork order saved successfully!");
     } catch (error) {
       console.error("Error saving artwork order:", error);
@@ -109,6 +124,7 @@ const Curate = () => {
         })
         .filter(Boolean);
       setOrderedArtworks(ordered);
+      setHasLocalChanges(false);
     }
   };
 
