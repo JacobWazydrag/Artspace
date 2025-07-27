@@ -258,9 +258,24 @@ const Users = () => {
       const currentLocationArtistIds = locationData?.artistIds || [];
       const currentLocationArtworkIds = locationData?.artworkIds || [];
 
+      // Avoid duplicates in location arrays
+      const newArtworkIdsForLocation = selectedArtworkIds.filter(
+        (id: string) => !currentLocationArtworkIds.includes(id)
+      );
+      const updatedLocationArtworkIds = [
+        ...currentLocationArtworkIds,
+        ...newArtworkIdsForLocation,
+      ];
+
+      const updatedLocationArtistIds = currentLocationArtistIds.includes(
+        selectedUser.id
+      )
+        ? currentLocationArtistIds
+        : [...currentLocationArtistIds, selectedUser.id];
+
       await updateDoc(locationRef, {
-        artworkIds: [...currentLocationArtworkIds, ...selectedArtworkIds],
-        artistIds: [...currentLocationArtistIds, selectedUser.id],
+        artworkIds: updatedLocationArtworkIds,
+        artistIds: updatedLocationArtistIds,
         updatedAt: new Date().toISOString(),
       });
 
@@ -271,15 +286,26 @@ const Users = () => {
       const currentArtworkIds = artshowData?.artworkIds || [];
       const currentArtworkOrder = artshowData?.artworkOrder || [];
 
-      // Add selected artwork IDs to the bottom of the artworkOrder array
-      const updatedArtworkOrder = [
-        ...currentArtworkOrder,
-        ...selectedArtworkIds,
-      ];
+      // Add selected artwork IDs to the bottom of the artworkOrder array, avoiding duplicates
+      const newArtworkIds = selectedArtworkIds.filter(
+        (id: string) => !currentArtworkOrder.includes(id)
+      );
+      const updatedArtworkOrder = [...currentArtworkOrder, ...newArtworkIds];
+
+      // Also avoid duplicates in artworkIds
+      const newArtworkIdsForShow = selectedArtworkIds.filter(
+        (id: string) => !currentArtworkIds.includes(id)
+      );
+      const updatedArtworkIds = [...currentArtworkIds, ...newArtworkIdsForShow];
+
+      // Check if artist is already in the show to avoid duplicates
+      const updatedArtistIds = currentArtistIds.includes(selectedUser.id)
+        ? currentArtistIds
+        : [...currentArtistIds, selectedUser.id];
 
       await updateDoc(artshowRef, {
-        artworkIds: [...currentArtworkIds, ...selectedArtworkIds],
-        artistIds: [...currentArtistIds, selectedUser.id],
+        artworkIds: updatedArtworkIds,
+        artistIds: updatedArtistIds,
         artworkOrder: updatedArtworkOrder,
         updatedAt: new Date().toISOString(),
       });
