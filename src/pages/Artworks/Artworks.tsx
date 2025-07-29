@@ -15,6 +15,8 @@ import { formClasses } from "../../classes/tailwindClasses";
 import { toast } from "react-hot-toast";
 import { NumericFormat } from "react-number-format";
 import React from "react";
+import { sendMail } from "../../features/mailSlice";
+import { mergeEmailConfig } from "../../utils/emailConfig";
 
 interface FilterState {
   search: string;
@@ -389,6 +391,109 @@ const Artworks = () => {
     }
   };
 
+  const sendSoldNotificationEmail = async (artwork: any, artist: any) => {
+    try {
+      // Check if artist has email notifications enabled
+      const emailNotificationsEnabled =
+        artist.notificationPreferences?.email?.active ?? true;
+
+      if (!emailNotificationsEnabled) {
+        console.log("Email notifications disabled for artist:", artist.email);
+        return;
+      }
+
+      const mailData = mergeEmailConfig({
+        replyTo: "artspacechicago@gmail.com",
+        toUids: [artwork.artistId],
+        message: {
+          subject: "🎉 Congratulations! Your Artwork Has Been Sold!",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; border-radius: 10px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #6b46c1; margin: 0; font-size: 28px;">🎨 ArtSpace Chicago</h1>
+                <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">Artwork Sold Notification</p>
+              </div>
+              
+              <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px;">Congratulations! 🎉</h2>
+                
+                <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+                  We're excited to let you know that your artwork has been marked as <strong>SOLD</strong> on ArtSpace Chicago!
+                </p>
+                
+                <div style="background-color: #f0f4ff; padding: 20px; border-radius: 6px; border-left: 4px solid #6b46c1; margin-bottom: 25px;">
+                  <h3 style="color: #6b46c1; margin: 0 0 15px 0; font-size: 18px;">Artwork Details:</h3>
+                  <p style="margin: 8px 0; color: #333;"><strong>Title:</strong> ${
+                    artwork.title
+                  }</p>
+                  <p style="margin: 8px 0; color: #333;"><strong>Medium:</strong> ${getMediumName(
+                    artwork.medium
+                  )}</p>
+                  <p style="margin: 8px 0; color: #333;"><strong>Dimensions:</strong> ${
+                    artwork.height
+                  } x ${artwork.width} ${artwork.uom}</p>
+                  ${
+                    artwork.price
+                      ? `<p style="margin: 8px 0; color: #333;"><strong>Price:</strong> $${artwork.price.toLocaleString()}</p>`
+                      : ""
+                  }
+                </div>
+                
+                ${
+                  artwork.images && artwork.images.length > 0
+                    ? `
+                <div style="text-align: center; margin-bottom: 25px;">
+                  <img 
+                    src="${artwork.images[0]}" 
+                    alt="${artwork.title}" 
+                    style="max-width: 300px; max-height: 300px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"
+                  />
+                </div>
+                `
+                    : ""
+                }
+                
+                <div style="background-color: #e8f5e8; padding: 20px; border-radius: 6px; border-left: 4px solid #48bb78; margin-bottom: 25px;">
+                  <h3 style="color: #2f855a; margin: 0 0 15px 0; font-size: 18px;">What's Next?</h3>
+                  <ul style="margin: 0; padding-left: 20px; color: #2f855a;">
+                    <li style="margin-bottom: 8px;">Your artwork will be marked as sold in our system</li>
+                    <li style="margin-bottom: 8px;">You may want to update your portfolio with new works</li>
+                    <li style="margin-bottom: 8px;">Consider uploading more artwork to continue your success</li>
+                    <li style="margin-bottom: 8px;">Stay connected with our community for future opportunities</li>
+                  </ul>
+                </div>
+                
+                <div style="background-color: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+                  <p style="margin: 0; color: #856404; font-size: 14px;">
+                    <strong>Note:</strong> This notification confirms that your artwork has been marked as sold in our system. 
+                    Please ensure all transaction details are properly handled between you and the buyer.
+                  </p>
+                </div>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                  <p style="color: #666; font-size: 14px; margin: 0;">
+                    Thank you for being part of the ArtSpace Chicago community. We're thrilled to see your success!
+                  </p>
+                </div>
+              </div>
+              
+              <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                <p>ArtSpace Chicago - Supporting Emerging Artists</p>
+                <p>📍 Chicago, Illinois</p>
+              </div>
+            </div>
+          `,
+        },
+      });
+
+      await dispatch(sendMail(mailData)).unwrap();
+      console.log("Sold notification email sent to:", artist.email);
+    } catch (error) {
+      console.error("Error sending sold notification email:", error);
+      // Don't show error to user as this is just a notification
+    }
+  };
+
   const handleMarkAsSold = async (artworkId: string) => {
     if (window.confirm("Are you sure you want to mark this artwork as sold?")) {
       try {
@@ -397,6 +502,16 @@ const Artworks = () => {
           sold: true,
           updatedAt: new Date().toISOString(),
         });
+
+        // Get the artwork and artist details for email notification
+        const artwork = artworks.find((a) => a.id === artworkId);
+        if (artwork) {
+          const artist = users?.find((user) => user.id === artwork.artistId);
+          if (artist) {
+            // Send email notification if artist has email notifications enabled
+            await sendSoldNotificationEmail(artwork, artist);
+          }
+        }
 
         // Refresh the artworks list
         await dispatch(fetchAllArtworks());
