@@ -404,6 +404,7 @@ const Artworks = () => {
 
       const mailData = mergeEmailConfig({
         replyTo: "artspacechicago@gmail.com",
+        cc: ["artspacechicago@gmail.com", "jgw.jakegeorge@gmail.com"],
         toUids: [artwork.artistId],
         message: {
           subject: "🎉 Congratulations! Your Artwork Has Been Sold!",

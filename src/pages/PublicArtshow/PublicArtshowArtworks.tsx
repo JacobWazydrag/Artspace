@@ -295,6 +295,7 @@ const ArtistModal = ({
                 trackCustomEvent("social_link_click", {
                   artist_id: artist.id,
                   artist_name: artist.name,
+                  link: artist.socialLinks.instagram,
                   platform: "instagram",
                   link_context: "artist_bio_modal",
                 });
