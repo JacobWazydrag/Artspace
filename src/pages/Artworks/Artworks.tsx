@@ -457,22 +457,21 @@ const Artworks = () => {
                   <h3 style="color: #2f855a; margin: 0 0 15px 0; font-size: 18px;">What's Next?</h3>
                   <ul style="margin: 0; padding-left: 20px; color: #2f855a;">
                     <li style="margin-bottom: 8px;">Your artwork will be marked as sold in our system</li>
-                    <li style="margin-bottom: 8px;">You may want to update your portfolio with new works</li>
+                    <li style="margin-bottom: 8px;">If the buyer permits, their info will be shared with you</li>
                     <li style="margin-bottom: 8px;">Consider uploading more artwork to continue your success</li>
-                    <li style="margin-bottom: 8px;">Stay connected with our community for future opportunities</li>
                   </ul>
                 </div>
                 
                 <div style="background-color: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
                   <p style="margin: 0; color: #856404; font-size: 14px;">
-                    <strong>Note:</strong> This notification confirms that your artwork has been marked as sold in our system. 
-                    Please ensure all transaction details are properly handled between you and the buyer.
+                    <strong>Note:</strong> Your percent of this sale will be sent to the payment method you shared on 
+                    your artists profile 72 hours after the closing of this show.
                   </p>
                 </div>
                 
                 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
                   <p style="color: #666; font-size: 14px; margin: 0;">
-                    Thank you for being part of the ArtSpace Chicago community. We're thrilled to see your success!
+                    Thank you for being part of the ArtSpace artist's Chicago community. We're thrilled to be part of your success!
                   </p>
                 </div>
               </div>
