@@ -86,6 +86,32 @@ export const trackArtistBioClick = (
     console.error("Error tracking artist bio click:", error);
   }
 };
+/**
+ * Tracks when a user clicks on an artist's name/link to view their bio
+ * @param artistId - ID of the artist
+ * @param artistName - Name of the artist
+ * @param clickContext - Where the artist link was clicked from
+ */
+export const trackArtistArtworksClick = (
+  artistId: string,
+  artistName: string,
+  clickContext: string = "artwork_card"
+) => {
+  if (!analyticsEnabled) return;
+
+  try {
+    logEvent(analytics, artistName + "_artworks_click", {
+      artist_id: artistId,
+      artist_name: artistName,
+      click_context: clickContext,
+      content_type: "artist_artworks",
+      content_id: artistId,
+    });
+    console.log(`Analytics: Artist artworks click tracked - ${artistName}`);
+  } catch (error) {
+    console.error("Error tracking artist artworks click:", error);
+  }
+};
 
 /**
  * Generic event tracking function for custom events

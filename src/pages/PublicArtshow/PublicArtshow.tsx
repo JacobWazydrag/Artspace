@@ -8,6 +8,7 @@ import {
   trackCustomEvent,
   trackPageView,
   trackArtistBioClick,
+  trackArtistArtworksClick,
 } from "../../utils/analytics";
 
 interface Artist {
@@ -510,14 +511,10 @@ const PublicArtshow = () => {
                       <button
                         onClick={() => {
                           // Track artworks view click
-                          trackCustomEvent(
-                            `${artist.name || "Artist"}_artworks_click`,
-                            {
-                              artist_id: artist.id || "",
-                              artist_name: artist.name || "",
-                              artwork_count: artistArtworks.length,
-                              context: "artist_card",
-                            }
+                          trackArtistArtworksClick(
+                            artist.id || "",
+                            artist.name || "",
+                            "artist_card"
                           );
 
                           setSelectedArtist({

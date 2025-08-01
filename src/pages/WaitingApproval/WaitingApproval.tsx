@@ -58,13 +58,10 @@ const WaitingApproval = () => {
           </p>
           <p>
             Our team will carefully review your profile to ensure it aligns with
-            our community standards and guidelines. This process typically takes
-            1-2 business days.
+            our community standards and guidelines.
           </p>
           <p>
             We'll notify you via email once your application has been reviewed.
-            In the meantime, feel free to explore our public galleries and
-            exhibitions.
           </p>
         </div>
 
@@ -86,13 +83,14 @@ const WaitingApproval = () => {
             If you have any questions about your application or need assistance,
             please don't hesitate to contact our support team at{" "}
             <a
-              href="mailto:support@artspace.com"
+              href="mailto:artspacechicago@gmail.com"
               className="text-blue-600 hover:text-blue-700"
             >
-              support@artspace.com
+              artspacechicago@gmail.com
             </a>
           </p>
           {/* logout button */}
+          <br />
           <button
             onClick={handleLogout}
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
