@@ -45,6 +45,16 @@ const RoleRoutes = ({
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Check if user is an employee
+  if (profile.role === "employee") {
+    // If trying to access admin routes (employees have similar access), allow it
+    if (allowedRoles.includes("employee")) {
+      return children ? <>{children}</> : <Outlet />;
+    }
+    // Otherwise redirect to artworks page (employee default)
+    return <Navigate to="/artworks" replace />;
+  }
+
   // Check if user has allowed role
   const hasAllowedRole = allowedRoles.includes(profile.role);
 

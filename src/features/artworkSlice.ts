@@ -36,14 +36,24 @@ export interface Artwork {
   price?: number;
   height?: number;
   width?: number;
-  availability?: "available" | "sold" | "not for sale";
+  availability?: "available" | "sold" | "not for sale" | "pending";
+  markedPending?: string;
   sold?: boolean;
+  pendingSale?: boolean;
   createdAt: string;
   updatedAt: string;
   locationId?: string;
   showStatus?: "accepted" | "rejected" | "shown" | null;
   beenInShows?: string[];
   productId?: string; // Stripe product ID
+  buyerInfo?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    paymentMethod?: string;
+    finalPricePaid?: number;
+  };
 }
 
 export interface ArtworkState {

@@ -27,8 +27,8 @@ const ProtectedRoute = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If admin role is required but user is not a admin
-  if (requireAdmin && profile.role !== "admin") {
+  // If admin role is required but user is not a admin or employee
+  if (requireAdmin && profile.role !== "admin" && profile.role !== "employee") {
     return <Navigate to="/dashboard" replace />;
   }
 

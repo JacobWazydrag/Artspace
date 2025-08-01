@@ -17,7 +17,7 @@ export const trackPageView = (pageName: string, pageTitle?: string) => {
   if (!analyticsEnabled) return;
 
   try {
-    logEvent(analytics, "page_view", {
+    logEvent(analytics, (pageTitle || pageName) + "_page_view", {
       page_title: pageTitle || pageName,
       page_location: window.location.href,
       page_path: window.location.pathname,
@@ -44,7 +44,7 @@ export const trackArtworkClick = (
   if (!analyticsEnabled) return;
 
   try {
-    logEvent(analytics, "artwork_click", {
+    logEvent(analytics, artistName + "_" + artworkTitle + "_click", {
       artwork_id: artworkId,
       artwork_title: artworkTitle,
       artist_name: artistName,
@@ -74,7 +74,7 @@ export const trackArtistBioClick = (
   if (!analyticsEnabled) return;
 
   try {
-    logEvent(analytics, "artist_bio_click", {
+    logEvent(analytics, artistName + "_bio_click", {
       artist_id: artistId,
       artist_name: artistName,
       click_context: clickContext,

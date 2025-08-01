@@ -8,7 +8,8 @@ export interface UserProfile {
     | "manager"
     | "on-boarding"
     | "on-boarding-awaiting-approval"
-    | "artist";
+    | "artist"
+    | "employee";
   status: "accepted" | "rejected" | "shown" | "showing" | null;
   contactInfo?: {
     phone?: string;

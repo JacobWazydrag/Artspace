@@ -21,7 +21,7 @@ export interface User {
   name: string;
   email: string;
   bio: string;
-  role: "manager" | "on-boarding" | "artist" | "admin";
+  role: "manager" | "employee" | "on-boarding" | "artist" | "admin";
   status: "accepted" | "rejected" | "shown" | "showing" | null;
   contactInfo?: {
     phone?: string;
@@ -63,7 +63,10 @@ const initialState: UsersState = {
 
 export const fetchUsers = createAsyncThunk("users/fetchUsers", async () => {
   const usersRef = collection(db, "users");
-  const q = query(usersRef, where("role", "not-in", ["admin", "manager"]));
+  const q = query(
+    usersRef,
+    where("role", "not-in", ["admin", "manager", "employee"])
+  );
   const querySnapshot = await getDocs(q);
   const users = querySnapshot.docs.map((doc) => ({
     id: doc.id,

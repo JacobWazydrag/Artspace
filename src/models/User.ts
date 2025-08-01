@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   bio: string;
-  role: "manager" | "on-boarding" | "artist" | "admin";
+  role: "manager" | "employee" | "on-boarding" | "artist" | "admin";
   status: "accepted" | "rejected" | "shown" | "showing" | "pending" | null;
   contactInfo?: {
     phone?: string;

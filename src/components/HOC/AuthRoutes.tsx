@@ -99,6 +99,9 @@ const AuthRoutes = () => {
     case "admin":
       return <Outlet />;
 
+    case "employee":
+      return <Outlet />;
+
     case "artist":
       return <Outlet />;
 

@@ -162,8 +162,17 @@ const LazyArtworkCard = ({
             #{index + 1}
           </div>
 
+          {/* PENDING Banner */}
+          {(artwork as any).pendingSale && (
+            <div className="absolute right-0 top-0 h-16 w-16 pointer-events-none">
+              <div className="absolute transform rotate-45 bg-yellow-500 text-center text-white font-semibold py-1 right-[-35px] top-[32px] w-[170px]">
+                PENDING
+              </div>
+            </div>
+          )}
+
           {/* SOLD Banner */}
-          {artwork.sold && (
+          {!(artwork as any).pendingSale && artwork.sold && (
             <div className="absolute right-0 top-0 h-16 w-16 pointer-events-none">
               <div className="absolute transform rotate-45 bg-red-600 text-center text-white font-semibold py-1 right-[-35px] top-[32px] w-[170px]">
                 SOLD
@@ -292,13 +301,19 @@ const ArtistModal = ({
               className="inline-flex items-center text-indigo-600 font-medium mb-4 hover:text-indigo-800 transition-colors duration-200"
               onClick={() => {
                 // Track Instagram link click
-                trackCustomEvent("social_link_click", {
-                  artist_id: artist.id,
-                  artist_name: artist.name,
-                  link: artist.socialLinks.instagram,
-                  platform: "instagram",
-                  link_context: "artist_bio_modal",
-                });
+                trackCustomEvent(
+                  artist.name +
+                    "_" +
+                    artist.socialLinks?.instagram +
+                    "_link_click",
+                  {
+                    artist_id: artist.id,
+                    artist_name: artist.name,
+                    link: artist.socialLinks.instagram,
+                    platform: "instagram",
+                    link_context: "artist_bio_modal",
+                  }
+                );
               }}
             >
               <svg

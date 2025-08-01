@@ -4,6 +4,8 @@ export type AuthFormData = {
   email: string;
   password: string;
   confirmPassword: string | undefined;
+  name?: string;
+  code?: string;
 };
 
 export const authFormSchema = yup.object().shape({
@@ -22,6 +24,19 @@ export const authFormSchema = yup.object().shape({
       schema
         .oneOf([yup.ref("password")], "Passwords don't match")
         .required("Confirm password is required"),
+    otherwise: (schema) => schema.notRequired(),
+  }),
+  name: yup.string().when("$isSignUp", {
+    is: true,
+    then: (schema) => schema.required("Name is required"),
+    otherwise: (schema) => schema.notRequired(),
+  }),
+  code: yup.string().when("$isSignUp", {
+    is: true,
+    then: (schema) =>
+      schema
+        .required("Signup code is required")
+        .oneOf(["myartshow", "myartspace"], "Invalid signup code"),
     otherwise: (schema) => schema.notRequired(),
   }),
 });

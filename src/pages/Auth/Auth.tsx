@@ -36,6 +36,7 @@ interface FormValues {
   password: string;
   confirmPassword?: string;
   name: string;
+  code?: string;
 }
 
 const Auth = () => {
@@ -227,6 +228,19 @@ const Auth = () => {
   //   }
   // };
 
+  const getRoleFromCode = (
+    code: string
+  ): "employee" | "on-boarding" | "artist" | "admin" => {
+    switch (code) {
+      case "myartshow":
+        return "on-boarding";
+      case "myartspace":
+        return "employee";
+      default:
+        return "on-boarding"; // fallback
+    }
+  };
+
   const sendNewUserNotification = async (userEmail: string, name: string) => {
     try {
       const mailData = mergeEmailConfig({
@@ -292,7 +306,8 @@ const Auth = () => {
   const handleFormSubmit: SubmitHandler<FormValues> = async (data) => {
     setErrorMessage(null);
     setLoading(true);
-    const { email, password, name } = data;
+    const { email, password, name, code } = data;
+
     if (authType === "sign-up") {
       try {
         const { user } = await createUserWithEmailAndPassword(
@@ -301,8 +316,11 @@ const Auth = () => {
           password
         );
 
+        // Determine user role based on signup code
+        const userRole = getRoleFromCode(code || "");
+
         // Create user document in Firestore
-        await setDoc(doc(db, "users", user.uid), {
+        const userDocData = {
           email,
           photoUrl: null,
           name,
@@ -313,7 +331,7 @@ const Auth = () => {
           status: "pending",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          role: "on-boarding",
+          role: userRole,
           socialLinks: {
             facebook: "",
             instagram: "",
@@ -326,7 +344,9 @@ const Auth = () => {
           notificationPreferences: {
             email: { active: false, frequency: "" },
           },
-        });
+        };
+
+        await setDoc(doc(db, "users", user.uid), userDocData);
 
         setLoading(false);
 
@@ -338,7 +358,7 @@ const Auth = () => {
               photoUrl: user.photoURL || null,
               name: name || "",
               bio: "",
-              role: "on-boarding",
+              role: userRole,
               status: null,
               contactInfo: { address: "", phone: "" },
               socialLinks: {},
@@ -517,6 +537,21 @@ const Auth = () => {
                   />
                   {errors.name ? (
                     <span className="text-red-700">{errors.name.message}</span>
+                  ) : (
+                    <></>
+                  )}
+                </div>
+              )}
+              {authType === "sign-up" && (
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Enter signup code"
+                    className={authInput}
+                    {...register("code")}
+                  />
+                  {errors.code ? (
+                    <span className="text-red-700">{errors.code.message}</span>
                   ) : (
                     <></>
                   )}

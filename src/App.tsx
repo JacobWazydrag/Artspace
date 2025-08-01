@@ -157,7 +157,7 @@ const App = () => {
           {/* Admin Routes */}
           <Route
             element={
-              <RoleRoutes allowedRoles={["admin"]}>
+              <RoleRoutes allowedRoles={["admin", "employee"]}>
                 <AdminLayout />
               </RoleRoutes>
             }
@@ -188,6 +188,7 @@ const App = () => {
                   "on-boarding",
                   "on-boarding-awaiting-approval",
                   "admin",
+                  "employee",
                   "artist",
                 ]}
               >
@@ -197,6 +198,8 @@ const App = () => {
                   <Navigate to="/waiting-approval" replace />
                 ) : profile?.role === "admin" ? (
                   <Navigate to="/users" replace />
+                ) : profile?.role === "employee" ? (
+                  <Navigate to="/artworks" replace />
                 ) : profile?.role === "artist" ? (
                   <Navigate to="/artist/my-artwork" replace />
                 ) : (

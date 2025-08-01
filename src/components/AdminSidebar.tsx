@@ -26,9 +26,12 @@ const Sidebar = () => {
   const dispatch = useAppDispatch();
 
   const { user } = useAppSelector((state) => state.auth);
+  const { data: profile } = useAppSelector((state) => state.profile);
   const hasUnread = useAppSelector((state) =>
     selectHasUnreadMessages(state, user?.id || "")
   );
+
+  const isEmployee = profile?.role === "employee";
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -52,58 +55,65 @@ const Sidebar = () => {
       </div>
       <nav className="flex-1">
         <ul className="space-y-2">
-          {/* <li>
-            <Link
-              to="/dashboard"
-              className={`block px-4 py-2 rounded ${
-                isActive("/dashboard") ? "bg-gray-900" : "hover:bg-gray-700"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <HomeIcon className="w-5 h-5" />
-                Dashboard
-              </span>
-            </Link>
-          </li> */}
-          {/* <li>
-            <Link
-              to="/locations"
-              className={`block px-4 py-2 rounded ${
-                isActive("/locations") ? "bg-gray-900" : "hover:bg-gray-700"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <MapPinIcon className="w-5 h-5" />
-                Locations
-              </span>
-            </Link>
-          </li> */}
-          <li>
-            <Link
-              to="/artshows"
-              className={`block px-4 py-2 rounded ${
-                isActive("/artshows") ? "bg-gray-900" : "hover:bg-gray-700"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <CalendarDaysIcon className="w-5 h-5" />
-                Art Shows
-              </span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/users"
-              className={`block px-4 py-2 rounded ${
-                isActive("/users") ? "bg-gray-900" : "hover:bg-gray-700"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <UsersIcon className="w-5 h-5" />
-                Artists
-              </span>
-            </Link>
-          </li>
+          {/* Only show these items for admin users */}
+          {!isEmployee && (
+            <>
+              {/* <li>
+                <Link
+                  to="/dashboard"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/dashboard") ? "bg-gray-900" : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <HomeIcon className="w-5 h-5" />
+                    Dashboard
+                  </span>
+                </Link>
+              </li> */}
+              {/* <li>
+                <Link
+                  to="/locations"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/locations") ? "bg-gray-900" : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <MapPinIcon className="w-5 h-5" />
+                    Locations
+                  </span>
+                </Link>
+              </li> */}
+              <li>
+                <Link
+                  to="/artshows"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/artshows") ? "bg-gray-900" : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <CalendarDaysIcon className="w-5 h-5" />
+                    Art Shows
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/users"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/users") ? "bg-gray-900" : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <UsersIcon className="w-5 h-5" />
+                    Artists
+                  </span>
+                </Link>
+              </li>
+            </>
+          )}
+
+          {/* Artworks - available to both admin and employee */}
           <li>
             <Link
               to="/artworks"
@@ -117,64 +127,72 @@ const Sidebar = () => {
               </span>
             </Link>
           </li>
-          <li>
-            <Link
-              to="/curate"
-              className={`block px-4 py-2 rounded ${
-                isActive("/curate") ? "bg-gray-900" : "hover:bg-gray-700"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <AdjustmentsHorizontalIcon className="w-5 h-5" />
-                Curate
-              </span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/chat"
-              className={`block px-4 py-2 rounded ${
-                isActive("/chat") ? "bg-gray-900" : "hover:bg-gray-700"
-              }`}
-            >
-              <span className="flex items-center gap-3 relative">
-                <ChatBubbleLeftRightIcon
-                  className={`w-5 h-5 ${
-                    hasUnread ? "text-red-500" : "text-white"
+
+          {/* Only show these items for admin users */}
+          {!isEmployee && (
+            <>
+              <li>
+                <Link
+                  to="/curate"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/curate") ? "bg-gray-900" : "hover:bg-gray-700"
                   }`}
-                />
-                Messages
-              </span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/invitation"
-              className={`block px-4 py-2 rounded ${
-                isActive("/invitation") ? "bg-gray-900" : "hover:bg-gray-700"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <EnvelopeIcon className="w-5 h-5" />
-                Invitation
-              </span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/mediums"
-              className={`block px-4 py-2 rounded ${
-                isActive("/mediums") ? "bg-gray-900" : "hover:bg-gray-700"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <Squares2X2Icon className="w-5 h-5" />
-                Mediums
-              </span>
-            </Link>
-          </li>
-          {/* Product Management and Test Cloud Function only for specific user */}
-          {user?.email === "jgw.jakegeorge@gmail.com" && (
+                >
+                  <span className="flex items-center gap-3">
+                    <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                    Curate
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/chat"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/chat") ? "bg-gray-900" : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3 relative">
+                    <ChatBubbleLeftRightIcon
+                      className={`w-5 h-5 ${
+                        hasUnread ? "text-red-500" : "text-white"
+                      }`}
+                    />
+                    Messages
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/invitation"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/invitation")
+                      ? "bg-gray-900"
+                      : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <EnvelopeIcon className="w-5 h-5" />
+                    Invitation
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/mediums"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/mediums") ? "bg-gray-900" : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <Squares2X2Icon className="w-5 h-5" />
+                    Mediums
+                  </span>
+                </Link>
+              </li>
+            </>
+          )}
+          {/* Product Management and Test Cloud Function only for specific user and not employees */}
+          {user?.email === "jgw.jakegeorge@gmail.com" && !isEmployee && (
             <>
               <li>
                 <Link
@@ -209,33 +227,37 @@ const Sidebar = () => {
             </>
           )}
 
-          {/* External Links */}
-          <li>
-            <a
-              href={`${process.env.REACT_APP_URL}/artshow`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block px-4 py-2 rounded hover:bg-gray-700"
-            >
-              <span className="flex items-center gap-3">
-                <UsersIcon className="w-5 h-5" />
-                Artists Page
-              </span>
-            </a>
-          </li>
-          <li>
-            <a
-              href={`${process.env.REACT_APP_URL}/artshow-artworks`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block px-4 py-2 rounded hover:bg-gray-700"
-            >
-              <span className="flex items-center gap-3">
-                <PaintBrushIcon className="w-5 h-5" />
-                Artworks Page
-              </span>
-            </a>
-          </li>
+          {/* External Links - only for admin users */}
+          {!isEmployee && (
+            <>
+              <li>
+                <a
+                  href={`${process.env.REACT_APP_URL}/artshow`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block px-4 py-2 rounded hover:bg-gray-700"
+                >
+                  <span className="flex items-center gap-3">
+                    <UsersIcon className="w-5 h-5" />
+                    Artists Page
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`${process.env.REACT_APP_URL}/artshow-artworks`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block px-4 py-2 rounded hover:bg-gray-700"
+                >
+                  <span className="flex items-center gap-3">
+                    <PaintBrushIcon className="w-5 h-5" />
+                    Artworks Page
+                  </span>
+                </a>
+              </li>
+            </>
+          )}
         </ul>
       </nav>
 

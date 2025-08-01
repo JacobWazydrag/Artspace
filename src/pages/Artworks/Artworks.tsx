@@ -148,6 +148,8 @@ const Artworks = () => {
   const { data: artshows } = useAppSelector((state) => state.artshows);
   const { data: locations } = useAppSelector((state) => state.locations);
   const { data: mediums } = useAppSelector((state) => state.mediums);
+  const { data: profile } = useAppSelector((state) => state.profile);
+  const { user } = useAppSelector((state) => state.auth);
   const { h1ReverseDark } = formClasses;
   const [filters, setFilters] = useState<FilterState>({
     search: "",
@@ -181,6 +183,30 @@ const Artworks = () => {
   const [isMediumDropdownOpen, setIsMediumDropdownOpen] = useState(false);
   const [isPriceRangeDropdownOpen, setIsPriceRangeDropdownOpen] =
     useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [selectedPendingArtworkId, setSelectedPendingArtworkId] = useState<
+    string | null
+  >(null);
+  const [showSoldModal, setShowSoldModal] = useState(false);
+  const [selectedSoldArtworkId, setSelectedSoldArtworkId] = useState<
+    string | null
+  >(null);
+  const [buyerInfo, setBuyerInfo] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    paymentMethod: "",
+    finalPricePaid: "",
+  });
+  const [soldBuyerInfo, setSoldBuyerInfo] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    paymentMethod: "",
+    finalPricePaid: "",
+  });
   const showStatusDropdownRef = useRef<HTMLDivElement>(null);
   const artistDropdownRef = useRef<HTMLDivElement>(null);
   const showsDropdownRef = useRef<HTMLDivElement>(null);
@@ -391,7 +417,11 @@ const Artworks = () => {
     }
   };
 
-  const sendSoldNotificationEmail = async (artwork: any, artist: any) => {
+  const sendSoldNotificationEmail = async (
+    artwork: any,
+    artist: any,
+    buyerInfo?: any
+  ) => {
     try {
       // Check if artist has email notifications enabled
       const emailNotificationsEnabled =
@@ -433,11 +463,6 @@ const Artworks = () => {
                   <p style="margin: 8px 0; color: #333;"><strong>Dimensions:</strong> ${
                     artwork.height
                   } x ${artwork.width} ${artwork.uom}</p>
-                  ${
-                    artwork.price
-                      ? `<p style="margin: 8px 0; color: #333;"><strong>Price:</strong> $${artwork.price.toLocaleString()}</p>`
-                      : ""
-                  }
                 </div>
                 
                 ${
@@ -457,7 +482,7 @@ const Artworks = () => {
                 <div style="background-color: #e8f5e8; padding: 20px; border-radius: 6px; border-left: 4px solid #48bb78; margin-bottom: 25px;">
                   <h3 style="color: #2f855a; margin: 0 0 15px 0; font-size: 18px;">What's Next?</h3>
                   <ul style="margin: 0; padding-left: 20px; color: #2f855a;">
-                    <li style="margin-bottom: 8px;">Your artwork will be marked as sold in our system</li>
+                    <li style="margin-bottom: 8px;">Your artwork has been marked as sold in our system</li>
                     <li style="margin-bottom: 8px;">If the buyer permits, their info will be shared with you</li>
                     <li style="margin-bottom: 8px;">Consider uploading more artwork to continue your success</li>
                   </ul>
@@ -494,33 +519,234 @@ const Artworks = () => {
     }
   };
 
-  const handleMarkAsSold = async (artworkId: string) => {
-    if (window.confirm("Are you sure you want to mark this artwork as sold?")) {
-      try {
-        const artworkRef = doc(db, "artworks", artworkId);
-        await updateDoc(artworkRef, {
-          sold: true,
-          updatedAt: new Date().toISOString(),
-        });
+  const sendPendingSaleNotificationEmail = async (
+    artwork: any,
+    artist: any,
+    buyerInfo: any
+  ) => {
+    try {
+      // Check if artist has email notifications enabled
+      const emailNotificationsEnabled =
+        artist.notificationPreferences?.email?.active ?? true;
 
-        // Get the artwork and artist details for email notification
-        const artwork = artworks.find((a) => a.id === artworkId);
-        if (artwork) {
-          const artist = users?.find((user) => user.id === artwork.artistId);
-          if (artist) {
-            // Send email notification if artist has email notifications enabled
-            await sendSoldNotificationEmail(artwork, artist);
-          }
-        }
-
-        // Refresh the artworks list
-        await dispatch(fetchAllArtworks());
-
-        toast.success("Artwork marked as sold successfully");
-      } catch (error) {
-        console.error("Error marking artwork as sold:", error);
-        toast.error("Failed to mark artwork as sold");
+      if (!emailNotificationsEnabled) {
+        console.log("Email notifications disabled for artist:", artist.email);
+        return;
       }
+
+      const mailData = mergeEmailConfig({
+        replyTo: "artspacechicago@gmail.com",
+        cc: ["artspacechicago@gmail.com", "jgw.jakegeorge@gmail.com"],
+        toUids: [artwork.artistId],
+        message: {
+          subject: "🟡 Your Artwork Sale is in Progress!",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; border-radius: 10px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #6b46c1; margin: 0; font-size: 28px;">🎨 ArtSpace Chicago</h1>
+                <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">Artwork Sale in Progress</p>
+              </div>
+              
+              <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px;">Great News! 🎯</h2>
+                
+                <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+                  We're excited to let you know that your artwork is <strong>in the process of being sold!</strong>
+                </p>
+                
+                <div style="background-color: #fff8e1; padding: 20px; border-radius: 6px; border-left: 4px solid #ff9800; margin-bottom: 25px;">
+                  <h3 style="color: #e65100; margin: 0 0 15px 0; font-size: 18px;">Artwork Details:</h3>
+                  <p style="margin: 8px 0; color: #333;"><strong>Title:</strong> ${
+                    artwork.title
+                  }</p>
+                  <p style="margin: 8px 0; color: #333;"><strong>Medium:</strong> ${getMediumName(
+                    artwork.medium
+                  )}</p>
+                  <p style="margin: 8px 0; color: #333;"><strong>Dimensions:</strong> ${
+                    artwork.height
+                  } x ${artwork.width} ${artwork.uom}</p>
+                </div>
+                
+                ${
+                  artwork.images && artwork.images.length > 0
+                    ? `
+                <div style="text-align: center; margin-bottom: 25px;">
+                  <img 
+                    src="${artwork.images[0]}" 
+                    alt="${artwork.title}" 
+                    style="max-width: 300px; max-height: 300px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"
+                  />
+                </div>
+                `
+                    : ""
+                }
+                
+                <div style="background-color: #e8f4fd; padding: 20px; border-radius: 6px; border-left: 4px solid #2196f3; margin-bottom: 25px;">
+                  <h3 style="color: #1976d2; margin: 0 0 15px 0; font-size: 18px;">What's Next?</h3>
+                  <ul style="margin: 0; padding-left: 20px; color: #1976d2;">
+                    <li style="margin-bottom: 8px;">The sale is currently being processed by our team</li>
+                    <li style="margin-bottom: 8px;">You'll be notified once the sale is completed</li>
+                    <li style="margin-bottom: 8px;">Payment will be processed according to our standard timeline</li>
+                  </ul>
+                </div>
+                
+                <div style="background-color: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+                  <p style="margin: 0; color: #856404; font-size: 14px;">
+                    <strong>Note:</strong> Your percent of this sale will be sent to the payment method you shared on 
+                    your artists profile 72 hours after the sale is finalized.
+                  </p>
+                </div>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                  <p style="color: #666; font-size: 14px; margin: 0;">
+                    Thank you for being part of the ArtSpace artist's Chicago community. We're excited about your pending sale!
+                  </p>
+                </div>
+              </div>
+              
+              <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                <p>ArtSpace Chicago - Supporting Emerging Artists</p>
+                <p>📍 Chicago, Illinois</p>
+              </div>
+            </div>
+          `,
+        },
+      });
+
+      await dispatch(sendMail(mailData)).unwrap();
+      console.log("Pending sale notification email sent to:", artist.email);
+    } catch (error) {
+      console.error("Error sending pending sale notification email:", error);
+      // Don't show error to user as this is just a notification
+    }
+  };
+
+  const handleShowPendingModal = (artworkId: string) => {
+    setSelectedPendingArtworkId(artworkId);
+    setBuyerInfo({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      paymentMethod: "",
+      finalPricePaid: "",
+    });
+    setShowPendingModal(true);
+  };
+
+  const handleShowSoldModal = (artworkId: string) => {
+    setSelectedSoldArtworkId(artworkId);
+
+    // Pre-populate buyer info if artwork is already pending
+    const artwork = artworks.find((a) => a.id === artworkId);
+    if (artwork && (artwork as any).pendingSale && artwork.buyerInfo) {
+      setSoldBuyerInfo({
+        firstName: artwork.buyerInfo.firstName || "",
+        lastName: artwork.buyerInfo.lastName || "",
+        email: artwork.buyerInfo.email || "",
+        phone: artwork.buyerInfo.phone || "",
+        paymentMethod: artwork.buyerInfo.paymentMethod || "",
+        finalPricePaid: artwork.buyerInfo.finalPricePaid?.toString() || "",
+      });
+    } else {
+      setSoldBuyerInfo({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        paymentMethod: "",
+        finalPricePaid: "",
+      });
+    }
+
+    setShowSoldModal(true);
+  };
+
+  const handleMarkAsPending = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPendingArtworkId) return;
+
+    try {
+      const artworkRef = doc(db, "artworks", selectedPendingArtworkId);
+      await updateDoc(artworkRef, {
+        sold: false,
+        pendingSale: true,
+        markedPending: user?.id, // Track which employee marked as pending
+        buyerInfo: {
+          ...buyerInfo,
+          finalPricePaid: parseFloat(buyerInfo.finalPricePaid) || 0,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Get the artwork and artist details for email notification
+      const artwork = artworks.find((a) => a.id === selectedPendingArtworkId);
+      if (artwork) {
+        const artist = users?.find((user) => user.id === artwork.artistId);
+        if (artist) {
+          // Send email notification if artist has email notifications enabled
+          await sendPendingSaleNotificationEmail(artwork, artist, buyerInfo);
+        }
+      }
+
+      // Refresh the artworks list
+      await dispatch(fetchAllArtworks());
+
+      toast.success("Artwork marked as pending sale successfully");
+      setShowPendingModal(false);
+      setSelectedPendingArtworkId(null);
+    } catch (error) {
+      console.error("Error marking artwork as pending:", error);
+      toast.error("Failed to mark artwork as pending");
+    }
+  };
+
+  const handleMarkAsSold = async (artworkId: string) => {
+    handleShowSoldModal(artworkId);
+  };
+
+  const handleMarkAsSoldSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSoldArtworkId) return;
+
+    try {
+      const artworkRef = doc(db, "artworks", selectedSoldArtworkId);
+      await updateDoc(artworkRef, {
+        sold: true,
+        pendingSale: false, // Clear pending status if it was set
+        markedPending: null, // Clear the employee who marked as pending
+        buyerInfo: {
+          ...soldBuyerInfo,
+          finalPricePaid: parseFloat(soldBuyerInfo.finalPricePaid) || 0,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Get the artwork and artist details for email notification
+      const artwork = artworks.find((a) => a.id === selectedSoldArtworkId);
+      if (artwork) {
+        const artist = users?.find((user) => user.id === artwork.artistId);
+        if (artist) {
+          // Send email notification if artist has email notifications enabled
+          await sendSoldNotificationEmail(artwork, artist, soldBuyerInfo);
+        }
+      }
+
+      // Refresh the artworks list
+      await dispatch(fetchAllArtworks());
+
+      // Show appropriate success message
+      const wasPending = artwork && (artwork as any).pendingSale;
+      toast.success(
+        wasPending
+          ? "Sale completed successfully"
+          : "Artwork marked as sold successfully"
+      );
+      setShowSoldModal(false);
+      setSelectedSoldArtworkId(null);
+    } catch (error) {
+      console.error("Error marking artwork as sold:", error);
+      toast.error("Failed to mark artwork as sold");
     }
   };
 
@@ -1141,17 +1367,35 @@ const Artworks = () => {
                       >
                         Preview
                       </button>
-                      {!artwork.sold && (
-                        <button
-                          onClick={() => handleMarkAsSold(artwork.id!)}
-                          className="text-green-600 hover:text-green-900 w-full font-medium"
-                        >
-                          Mark as Sold
-                        </button>
-                      )}
+                      {!artwork.sold &&
+                        artwork.showStatus === "accepted" &&
+                        profile?.role === "admin" && (
+                          <button
+                            onClick={() => handleMarkAsSold(artwork.id!)}
+                            className="text-green-600 hover:text-green-900 w-full font-medium"
+                          >
+                            Mark as Sold
+                          </button>
+                        )}
+                      {!artwork.sold &&
+                        !(artwork as any).pendingSale &&
+                        artwork.showStatus === "accepted" &&
+                        profile?.role === "employee" && (
+                          <button
+                            onClick={() => handleShowPendingModal(artwork.id!)}
+                            className="text-orange-600 hover:text-orange-900 w-full font-medium"
+                          >
+                            Mark Pending
+                          </button>
+                        )}
                       {artwork.sold && (
                         <span className="text-green-600 font-bold text-center py-1">
                           SOLD
+                        </span>
+                      )}
+                      {(artwork as any).pendingSale && (
+                        <span className="text-orange-600 font-bold text-center py-1">
+                          PENDING
                         </span>
                       )}
                     </div>
@@ -1488,6 +1732,301 @@ const Artworks = () => {
               <h3 className="text-lg font-semibold mb-4">Description</h3>
               <div className="text-gray-800 whitespace-pre-line break-words">
                 {descModal.text}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mark Pending Modal */}
+        {showPendingModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Mark Artwork as Pending Sale
+                </h3>
+                <form onSubmit={handleMarkAsPending} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer First Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={buyerInfo.firstName}
+                      onChange={(e) =>
+                        setBuyerInfo({
+                          ...buyerInfo,
+                          firstName: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={buyerInfo.lastName}
+                      onChange={(e) =>
+                        setBuyerInfo({ ...buyerInfo, lastName: e.target.value })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      value={buyerInfo.phone}
+                      onChange={(e) =>
+                        setBuyerInfo({ ...buyerInfo, phone: e.target.value })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={buyerInfo.email}
+                      onChange={(e) =>
+                        setBuyerInfo({ ...buyerInfo, email: e.target.value })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer Payment Method *
+                    </label>
+                    <input
+                      type="text"
+                      value={buyerInfo.paymentMethod}
+                      onChange={(e) =>
+                        setBuyerInfo({
+                          ...buyerInfo,
+                          paymentMethod: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      placeholder="e.g., Credit Card, Cash, Check"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Final Price Paid *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={buyerInfo.finalPricePaid}
+                      onChange={(e) =>
+                        setBuyerInfo({
+                          ...buyerInfo,
+                          finalPricePaid: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPendingModal(false);
+                        setSelectedPendingArtworkId(null);
+                      }}
+                      className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-orange-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                    >
+                      Mark Pending
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mark Sold Modal */}
+        {showSoldModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  {(() => {
+                    const artwork = artworks.find(
+                      (a) => a.id === selectedSoldArtworkId
+                    );
+                    return artwork && (artwork as any).pendingSale
+                      ? "Complete Sale"
+                      : "Mark Artwork as Sold";
+                  })()}
+                </h3>
+                <form onSubmit={handleMarkAsSoldSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer First Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={soldBuyerInfo.firstName}
+                      onChange={(e) =>
+                        setSoldBuyerInfo({
+                          ...soldBuyerInfo,
+                          firstName: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={soldBuyerInfo.lastName}
+                      onChange={(e) =>
+                        setSoldBuyerInfo({
+                          ...soldBuyerInfo,
+                          lastName: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      value={soldBuyerInfo.phone}
+                      onChange={(e) =>
+                        setSoldBuyerInfo({
+                          ...soldBuyerInfo,
+                          phone: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={soldBuyerInfo.email}
+                      onChange={(e) =>
+                        setSoldBuyerInfo({
+                          ...soldBuyerInfo,
+                          email: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Buyer Payment Method *
+                    </label>
+                    <input
+                      type="text"
+                      value={soldBuyerInfo.paymentMethod}
+                      onChange={(e) =>
+                        setSoldBuyerInfo({
+                          ...soldBuyerInfo,
+                          paymentMethod: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      placeholder="e.g., Credit Card, Cash, Check"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Final Price Paid *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={soldBuyerInfo.finalPricePaid}
+                      onChange={(e) =>
+                        setSoldBuyerInfo({
+                          ...soldBuyerInfo,
+                          finalPricePaid: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSoldModal(false);
+                        setSelectedSoldArtworkId(null);
+                      }}
+                      className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-green-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                      {(() => {
+                        const artwork = artworks.find(
+                          (a) => a.id === selectedSoldArtworkId
+                        );
+                        return artwork && (artwork as any).pendingSale
+                          ? "Complete Sale"
+                          : "Mark Sold";
+                      })()}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
