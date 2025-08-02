@@ -526,6 +526,64 @@ export const fetchAllArtworks = createAsyncThunk(
   }
 );
 
+export const fetchSoldArtworks = createAsyncThunk(
+  "artwork/fetchSold",
+  async () => {
+    try {
+      const artworksRef = collection(db, "artworks");
+      const q = query(artworksRef, orderBy("updatedAt", "desc"));
+      const querySnapshot = await getDocs(q);
+      const artworks = querySnapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          const artwork = {
+            id: doc.id,
+            title: data.title,
+            medium: data.medium,
+            uom: data.uom,
+            date: data.date,
+            images: data.images || [],
+            description: data.description,
+            artistId: data.artistId,
+            artshowId: data.artshowId,
+            price: data.price,
+            height: data.height,
+            width: data.width,
+            availability: data.availability,
+            markedPending: data.markedPending,
+            sold: data.sold,
+            pendingSale: data.pendingSale,
+            locationId: data.locationId,
+            showStatus: data.showStatus,
+            beenInShows: data.beenInShows,
+            productId: data.productId,
+            buyerInfo: data.buyerInfo,
+            createdAt:
+              data.createdAt instanceof Timestamp
+                ? data.createdAt.toDate().toISOString()
+                : typeof data.createdAt === "string"
+                ? data.createdAt
+                : new Date().toISOString(),
+            updatedAt:
+              data.updatedAt instanceof Timestamp
+                ? data.updatedAt.toDate().toISOString()
+                : typeof data.updatedAt === "string"
+                ? data.updatedAt
+                : new Date().toISOString(),
+          } as Artwork;
+          return artwork;
+        })
+        .filter(
+          (artwork) => artwork.sold === true || artwork.pendingSale === true
+        );
+      return artworks;
+    } catch (error) {
+      console.error("Error fetching sold artworks:", error);
+      throw error;
+    }
+  }
+);
+
 export const updateArtworkProductId = createAsyncThunk(
   "artwork/updateProductId",
   async ({
@@ -702,6 +760,18 @@ const artworkSlice = createSlice({
       .addCase(fetchAllArtworks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to fetch artworks";
+      })
+      .addCase(fetchSoldArtworks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchSoldArtworks.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload;
+      })
+      .addCase(fetchSoldArtworks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch sold artworks";
       })
       .addCase(updateArtworkProductId.pending, (state) => {
         state.loading = true;

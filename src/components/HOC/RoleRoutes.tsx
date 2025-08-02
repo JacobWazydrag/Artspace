@@ -47,6 +47,14 @@ const RoleRoutes = ({
 
   // Check if user is an employee
   if (profile.role === "employee") {
+    // Check if employee has preShow status
+    if (profile.status === "preShow") {
+      if (allowedRoles.includes("employee")) {
+        return children ? <>{children}</> : <Outlet />;
+      }
+      // Redirect preShow employees to their waiting page
+      return <Navigate to="/pre-show-waiting" replace />;
+    }
     // If trying to access admin routes (employees have similar access), allow it
     if (allowedRoles.includes("employee")) {
       return children ? <>{children}</> : <Outlet />;

@@ -25,6 +25,7 @@ interface FilterState {
   shows: string[];
   mediums: string[];
   priceRange: string;
+  saleStatuses: string[];
 }
 
 interface ImageGalleryProps {
@@ -158,6 +159,7 @@ const Artworks = () => {
     shows: [],
     mediums: [],
     priceRange: "",
+    saleStatuses: [],
   });
   const [selectedArtwork, setSelectedArtwork] = useState<{
     images: string[];
@@ -182,6 +184,8 @@ const Artworks = () => {
   const [isShowsDropdownOpen, setIsShowsDropdownOpen] = useState(false);
   const [isMediumDropdownOpen, setIsMediumDropdownOpen] = useState(false);
   const [isPriceRangeDropdownOpen, setIsPriceRangeDropdownOpen] =
+    useState(false);
+  const [isSaleStatusDropdownOpen, setIsSaleStatusDropdownOpen] =
     useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [selectedPendingArtworkId, setSelectedPendingArtworkId] = useState<
@@ -212,6 +216,7 @@ const Artworks = () => {
   const showsDropdownRef = useRef<HTMLDivElement>(null);
   const mediumDropdownRef = useRef<HTMLDivElement>(null);
   const priceRangeDropdownRef = useRef<HTMLDivElement>(null);
+  const saleStatusDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     dispatch(fetchAllArtworks());
@@ -306,6 +311,23 @@ const Artworks = () => {
     };
   }, [isPriceRangeDropdownOpen]);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        saleStatusDropdownRef.current &&
+        !saleStatusDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsSaleStatusDropdownOpen(false);
+      }
+    }
+    if (isSaleStatusDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isSaleStatusDropdownOpen]);
+
   const filteredArtworks = artworks.filter((artwork) => {
     if (
       filters.search &&
@@ -350,6 +372,17 @@ const Artworks = () => {
         if (artwork.price < min || artwork.price > max) return false;
       } else {
         if (artwork.price < min) return false;
+      }
+    }
+
+    if (filters.saleStatuses.length > 0) {
+      const artworkSaleStatus = artwork.sold
+        ? "sold"
+        : (artwork as any).pendingSale
+        ? "pending"
+        : "available";
+      if (!filters.saleStatuses.includes(artworkSaleStatus)) {
+        return false;
       }
     }
 
@@ -1160,6 +1193,63 @@ const Artworks = () => {
                   </div>
                 )}
               </div>
+
+              {/* Sale Status Filter */}
+              <div
+                className="relative flex-1 min-w-[200px]"
+                ref={saleStatusDropdownRef}
+              >
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                  onClick={() => setIsSaleStatusDropdownOpen((open) => !open)}
+                >
+                  Sale Status
+                  <svg
+                    className="w-2.5 h-2.5 ms-2.5"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 10 6"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="m1 1 4 4 4-4"
+                    />
+                  </svg>
+                </button>
+                {isSaleStatusDropdownOpen && (
+                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                    <ul className="py-2 text-sm text-gray-700">
+                      {["available", "pending", "sold"].map((status) => (
+                        <li key={status}>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.saleStatuses.includes(status)}
+                              onChange={(e) => {
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  saleStatuses: e.target.checked
+                                    ? [...prev.saleStatuses, status]
+                                    : prev.saleStatuses.filter(
+                                        (s) => s !== status
+                                      ),
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2 capitalize">{status}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Active Filters */}
@@ -1168,7 +1258,8 @@ const Artworks = () => {
               filters.artists.length > 0 ||
               filters.shows.length > 0 ||
               filters.mediums.length > 0 ||
-              filters.priceRange) && (
+              filters.priceRange ||
+              filters.saleStatuses.length > 0) && (
               <div className="mt-4 flex items-center justify-between">
                 <div className="flex flex-wrap gap-2">
                   {filters.search && (
@@ -1298,6 +1389,27 @@ const Artworks = () => {
                       </button>
                     </span>
                   )}
+                  {filters.saleStatuses.map((status) => (
+                    <span
+                      key={status}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                    >
+                      Sale: {status}
+                      <button
+                        onClick={() =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            saleStatuses: prev.saleStatuses.filter(
+                              (s) => s !== status
+                            ),
+                          }))
+                        }
+                        className="ml-2 text-blue-600 hover:text-blue-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
                 </div>
                 <button
                   onClick={() =>
@@ -1308,6 +1420,7 @@ const Artworks = () => {
                       shows: [],
                       mediums: [],
                       priceRange: "",
+                      saleStatuses: [],
                     })
                   }
                   className="text-sm text-gray-600 hover:text-gray-900 font-medium"
@@ -1332,7 +1445,8 @@ const Artworks = () => {
                 return (
                   <div
                     key={artwork.id}
-                    className="bg-white rounded-lg shadow p-6 flex flex-col items-center w-full max-w-md lg:max-w-lg"
+                    className="bg-white rounded-lg shadow p-6 flex flex-col items-center w-full max-w-md lg:max-w-lg cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => setPreviewArtwork(artwork)}
                   >
                     <div className="w-full flex justify-center mb-3">
                       {artwork.images && artwork.images.length > 0 ? (
@@ -1361,17 +1475,14 @@ const Artworks = () => {
                       </>
                     )}
                     <div className="flex flex-col space-y-2 w-full mt-2">
-                      <button
-                        onClick={() => setPreviewArtwork(artwork)}
-                        className="text-blue-600 hover:text-blue-900 w-full"
-                      >
-                        Preview
-                      </button>
                       {!artwork.sold &&
                         artwork.showStatus === "accepted" &&
                         profile?.role === "admin" && (
                           <button
-                            onClick={() => handleMarkAsSold(artwork.id!)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsSold(artwork.id!);
+                            }}
                             className="text-green-600 hover:text-green-900 w-full font-medium"
                           >
                             Mark as Sold
@@ -1382,7 +1493,10 @@ const Artworks = () => {
                         artwork.showStatus === "accepted" &&
                         profile?.role === "employee" && (
                           <button
-                            onClick={() => handleShowPendingModal(artwork.id!)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShowPendingModal(artwork.id!);
+                            }}
                             className="text-orange-600 hover:text-orange-900 w-full font-medium"
                           >
                             Mark Pending
@@ -1536,6 +1650,10 @@ const Artworks = () => {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             SOLD
                           </span>
+                        ) : (previewArtwork as any).pendingSale ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            PENDING
+                          </span>
                         ) : (
                           <span className="text-sm text-gray-500">
                             Available
@@ -1543,6 +1661,67 @@ const Artworks = () => {
                         )}
                       </p>
                     </div>
+
+                    {/* Buyer Information */}
+                    {previewArtwork.buyerInfo &&
+                      (previewArtwork.sold ||
+                        (previewArtwork as any).pendingSale) && (
+                        <div className="border-t pt-4">
+                          <h4 className="text-lg font-medium text-gray-900 mb-3">
+                            Buyer Information
+                          </h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="text-sm font-medium text-gray-500">
+                                Name:
+                              </span>
+                              <p className="text-gray-900">
+                                {previewArtwork.buyerInfo.firstName}{" "}
+                                {previewArtwork.buyerInfo.lastName}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-gray-500">
+                                Email:
+                              </span>
+                              <p className="text-gray-900">
+                                {previewArtwork.buyerInfo.email}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-gray-500">
+                                Phone:
+                              </span>
+                              <p className="text-gray-900">
+                                {previewArtwork.buyerInfo.phone}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-gray-500">
+                                Payment Method:
+                              </span>
+                              <p className="text-gray-900">
+                                {previewArtwork.buyerInfo.paymentMethod}
+                              </p>
+                            </div>
+                            {previewArtwork.buyerInfo.finalPricePaid && (
+                              <div className="col-span-2">
+                                <span className="text-sm font-medium text-gray-500">
+                                  Final Price Paid:
+                                </span>
+                                <p className="text-gray-900">
+                                  {new Intl.NumberFormat("en-US", {
+                                    style: "currency",
+                                    currency: "USD",
+                                  }).format(
+                                    previewArtwork.buyerInfo.finalPricePaid
+                                  )}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     <div>
                       <h4 className="text-lg font-medium text-gray-900 mb-1">
                         Previous Shows

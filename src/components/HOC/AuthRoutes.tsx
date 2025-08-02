@@ -100,6 +100,13 @@ const AuthRoutes = () => {
       return <Outlet />;
 
     case "employee":
+      // Check if employee has preShow status
+      if (profile?.status === "preShow") {
+        if (location.pathname === "/pre-show-waiting") {
+          return <Outlet />;
+        }
+        return <Navigate to="/pre-show-waiting" replace />;
+      }
       return <Outlet />;
 
     case "artist":

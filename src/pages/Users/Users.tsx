@@ -554,7 +554,7 @@ const Users = () => {
     <div className="container mx-auto px-4 py-8">
       <ContentWrapper loading={loading}>
         <div className="flex justify-between items-center mb-6">
-          <h1 className={h1ReverseDark}>Users</h1>
+          <h1 className={h1ReverseDark}>Artists</h1>
         </div>
 
         <div className="mb-8 space-y-6">

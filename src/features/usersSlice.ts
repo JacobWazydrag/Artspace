@@ -35,6 +35,7 @@ export interface User {
     | "showing"
     | "pending"
     | "webmaster"
+    | "preShow"
     | null;
   contactInfo?: {
     phone?: string;

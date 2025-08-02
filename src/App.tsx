@@ -39,6 +39,9 @@ import PublicArtshowArtworks from "./pages/PublicArtshow/PublicArtshowArtworks";
 import TestCloudFunction from "./pages/TestCloudFunction/TestCloudFunction";
 import ProductManagement from "./pages/ProductManagement/ProductManagement";
 import TableView from "./pages/TableView/TableView";
+import Purchases from "./pages/Purchases/Purchases";
+import SendMail from "./pages/SendMail/SendMail";
+import PreShowWaiting from "./pages/PreShowWaiting/PreShowWaiting";
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -141,6 +144,16 @@ const App = () => {
             }
           />
 
+          {/* Pre Show Waiting Route */}
+          <Route
+            path="pre-show-waiting"
+            element={
+              <RoleRoutes allowedRoles={["employee"]}>
+                <PreShowWaiting />
+              </RoleRoutes>
+            }
+          />
+
           {/* Artist Routes */}
           <Route
             element={
@@ -172,10 +185,12 @@ const App = () => {
             <Route path="users" element={<Users />} />
             <Route path="users/:userId/artworks" element={<UserArtworks />} />
             <Route path="artworks" element={<Artworks />} />
+            <Route path="purchases" element={<Purchases />} />
             <Route path="curate" element={<Curate />} />
             <Route path="table-view" element={<TableView />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="invitation" element={<Invitation />} />
+            <Route path="send-mail" element={<SendMail />} />
             <Route path="product-management" element={<ProductManagement />} />
             <Route path="test-cloud-function" element={<TestCloudFunction />} />
             <Route path="settings" element={<Settings />} />

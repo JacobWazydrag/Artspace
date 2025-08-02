@@ -23,7 +23,7 @@ const ChatPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Messages</h1>
+      <h1 className="text-2xl font-bold mb-6">Chat</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
         <div className="md:col-span-1 border rounded-lg overflow-hidden">
           <ChatList />

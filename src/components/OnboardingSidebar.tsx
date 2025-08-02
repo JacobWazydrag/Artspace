@@ -72,7 +72,7 @@ const OnboardingSidebar = () => {
                     hasUnread ? "text-red-500" : "text-white"
                   }`}
                 />
-                Messages
+                Chat
               </span>
             </Link>
           </li>

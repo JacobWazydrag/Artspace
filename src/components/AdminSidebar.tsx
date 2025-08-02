@@ -19,6 +19,7 @@ import {
   AdjustmentsHorizontalIcon,
   ShoppingCartIcon,
   TableCellsIcon,
+  PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
 
@@ -130,6 +131,23 @@ const Sidebar = () => {
             </Link>
           </li>
 
+          {/* Purchases - only for admin users */}
+          {!isEmployee && (
+            <li>
+              <Link
+                to="/purchases"
+                className={`block px-4 py-2 rounded ${
+                  isActive("/purchases") ? "bg-gray-900" : "hover:bg-gray-700"
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <ShoppingCartIcon className="w-5 h-5" />
+                  Purchases
+                </span>
+              </Link>
+            </li>
+          )}
+
           {/* Only show these items for admin users */}
           {!isEmployee && (
             <>
@@ -177,7 +195,7 @@ const Sidebar = () => {
                         hasUnread ? "text-red-500" : "text-white"
                       }`}
                     />
-                    Messages
+                    Chat
                   </span>
                 </Link>
               </li>
@@ -192,7 +210,20 @@ const Sidebar = () => {
                 >
                   <span className="flex items-center gap-3">
                     <EnvelopeIcon className="w-5 h-5" />
-                    Invitation
+                    Invite New Artist
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/send-mail"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/send-mail") ? "bg-gray-900" : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <PaperAirplaneIcon className="w-5 h-5" />
+                    Send Mail
                   </span>
                 </Link>
               </li>
