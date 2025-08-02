@@ -38,6 +38,7 @@ import { fetchUserChats } from "./features/chatSlice";
 import PublicArtshowArtworks from "./pages/PublicArtshow/PublicArtshowArtworks";
 import TestCloudFunction from "./pages/TestCloudFunction/TestCloudFunction";
 import ProductManagement from "./pages/ProductManagement/ProductManagement";
+import TableView from "./pages/TableView/TableView";
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -172,6 +173,7 @@ const App = () => {
             <Route path="users/:userId/artworks" element={<UserArtworks />} />
             <Route path="artworks" element={<Artworks />} />
             <Route path="curate" element={<Curate />} />
+            <Route path="table-view" element={<TableView />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="invitation" element={<Invitation />} />
             <Route path="product-management" element={<ProductManagement />} />

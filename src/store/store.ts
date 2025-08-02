@@ -9,6 +9,7 @@ import artworkReducer from "../features/artworkSlice";
 import publicReducer from "../features/publicSlice";
 import chatReducer from "../features/chatSlice";
 import mailReducer from "../features/mailSlice";
+import webMasterReducer from "../features/webMasterSlice";
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     public: publicReducer,
     chat: chatReducer,
     mail: mailReducer,
+    webMaster: webMasterReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -36,6 +38,14 @@ export const store = configureStore({
           "artwork/fetchArtwork/fulfilled",
           "chat/sendMessage/fulfilled",
           "chat/createChat/fulfilled",
+          "webMaster/fetchArtshows/fulfilled",
+          "webMaster/fetchArtworks/fulfilled",
+          "webMaster/fetchChats/fulfilled",
+          "webMaster/fetchLocations/fulfilled",
+          "webMaster/fetchMail/fulfilled",
+          "webMaster/fetchMediums/fulfilled",
+          "webMaster/fetchMessages/fulfilled",
+          "webMaster/fetchUsers/fulfilled",
         ],
         // Ignore these field paths in all actions
         ignoredActionPaths: [

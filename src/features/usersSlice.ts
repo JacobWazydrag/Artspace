@@ -21,8 +21,21 @@ export interface User {
   name: string;
   email: string;
   bio: string;
-  role: "manager" | "employee" | "on-boarding" | "artist" | "admin";
-  status: "accepted" | "rejected" | "shown" | "showing" | null;
+  role:
+    | "manager"
+    | "employee"
+    | "on-boarding"
+    | "artist"
+    | "admin"
+    | "on-boarding-awaiting-approval";
+  status:
+    | "accepted"
+    | "rejected"
+    | "shown"
+    | "showing"
+    | "pending"
+    | "webmaster"
+    | null;
   contactInfo?: {
     phone?: string;
     address?: string;

@@ -18,6 +18,7 @@ import {
   Cog6ToothIcon,
   AdjustmentsHorizontalIcon,
   ShoppingCartIcon,
+  TableCellsIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
 
@@ -32,6 +33,7 @@ const Sidebar = () => {
   );
 
   const isEmployee = profile?.role === "employee";
+  const isWebMaster = profile?.status === "webmaster";
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -144,6 +146,24 @@ const Sidebar = () => {
                   </span>
                 </Link>
               </li>
+              {/* Table View - only for webmaster users */}
+              {isWebMaster && (
+                <li>
+                  <Link
+                    to="/table-view"
+                    className={`block px-4 py-2 rounded ${
+                      isActive("/table-view")
+                        ? "bg-gray-900"
+                        : "hover:bg-gray-700"
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <TableCellsIcon className="w-5 h-5" />
+                      Table View
+                    </span>
+                  </Link>
+                </li>
+              )}
               <li>
                 <Link
                   to="/chat"
