@@ -11,7 +11,13 @@ interface WebMasterArtshow {
   endDate: string;
   locationId?: string;
   status: string;
+  subTitle?: string;
+  photoUrl?: string;
+  artistIds: string[];
+  artworkIds: string[];
+  artworkOrder: string[];
   createdAt: any;
+  updatedAt?: any;
 }
 
 interface WebMasterArtwork {
@@ -22,7 +28,10 @@ interface WebMasterArtwork {
   medium: string;
   price?: number;
   sold: boolean;
+  pendingSale?: boolean;
+  buyerInfo?: any;
   createdAt: any;
+  updatedAt?: any;
 }
 
 interface WebMasterChat {
@@ -40,7 +49,7 @@ interface WebMasterLocation {
   city?: string;
   state?: string;
   zipCode?: string;
-  createdAt: any;
+  createdAt?: any;
 }
 
 interface WebMasterMail {
@@ -75,6 +84,7 @@ interface WebMasterUser {
   role: string;
   status: string;
   createdAt: any;
+  updatedAt?: any;
 }
 
 interface WebMasterState {
@@ -167,8 +177,9 @@ export const fetchWebMasterArtworks = createAsyncThunk(
 export const fetchWebMasterChats = createAsyncThunk(
   "webMaster/fetchChats",
   async () => {
-    const q = query(collection(db, "chats"), orderBy("createdAt", "desc"));
-    const querySnapshot = await getDocs(q);
+    console.log("🔍 WebMaster: Fetching chats without orderBy...");
+    const querySnapshot = await getDocs(collection(db, "chats"));
+    console.log("📍 WebMaster: Chats found:", querySnapshot.docs.length);
     return querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -179,12 +190,28 @@ export const fetchWebMasterChats = createAsyncThunk(
 export const fetchWebMasterLocations = createAsyncThunk(
   "webMaster/fetchLocations",
   async () => {
-    const q = query(collection(db, "locations"), orderBy("createdAt", "desc"));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as WebMasterLocation[];
+    console.log(
+      "🔍 WebMaster: Starting to fetch locations - using same method as working regular fetch..."
+    );
+
+    // Use exactly the same approach as the working regular locations slice
+    const querySnapshot = await getDocs(collection(db, "locations"));
+    console.log(
+      "📍 WebMaster: Query completed. Documents found:",
+      querySnapshot.docs.length
+    );
+
+    const locations = querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      console.log("📍 WebMaster: Location document:", { id: doc.id, data });
+      return {
+        id: doc.id,
+        ...data,
+      };
+    }) as WebMasterLocation[];
+
+    console.log("📍 WebMaster: Final locations array:", locations);
+    return locations;
   }
 );
 
@@ -215,8 +242,9 @@ export const fetchWebMasterMediums = createAsyncThunk(
 export const fetchWebMasterMessages = createAsyncThunk(
   "webMaster/fetchMessages",
   async () => {
-    const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
-    const querySnapshot = await getDocs(q);
+    console.log("🔍 WebMaster: Fetching messages without orderBy...");
+    const querySnapshot = await getDocs(collection(db, "messages"));
+    console.log("📍 WebMaster: Messages found:", querySnapshot.docs.length);
     return querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),

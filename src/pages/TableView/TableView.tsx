@@ -10,6 +10,7 @@ import {
   fetchWebMasterMessages,
   fetchWebMasterUsers,
 } from "../../features/webMasterSlice";
+import { fetchLocations } from "../../features/locationsSlice";
 
 type TabType =
   | "artshows"
@@ -24,18 +25,35 @@ type TabType =
 const TableView = () => {
   const dispatch = useAppDispatch();
   const webMaster = useAppSelector((state) => state.webMaster);
+  const locations = useAppSelector((state) => state.locations);
+  const auth = useAppSelector((state) => state.auth);
+  const profile = useAppSelector((state) => state.profile);
   const [activeTab, setActiveTab] = useState<TabType>("artshows");
+
+  // Dialog state for array field details
+  const [showDialog, setShowDialog] = useState(false);
+  const [dialogData, setDialogData] = useState<{
+    title: string;
+    items: Array<{ id: string; name: string }>;
+  }>({ title: "", items: [] });
 
   useEffect(() => {
     // Fetch all data when component mounts
     dispatch(fetchWebMasterArtshows());
     dispatch(fetchWebMasterArtworks());
     dispatch(fetchWebMasterChats());
-    dispatch(fetchWebMasterLocations());
+    dispatch(fetchWebMasterLocations()).then((result) => {
+      console.log("WebMaster Locations fetch result:", result);
+    });
     dispatch(fetchWebMasterMail());
     dispatch(fetchWebMasterMediums());
     dispatch(fetchWebMasterMessages());
     dispatch(fetchWebMasterUsers());
+
+    // Also fetch regular locations for comparison
+    dispatch(fetchLocations()).then((result) => {
+      console.log("Regular Locations fetch result:", result);
+    });
   }, [dispatch]);
 
   const tabs = [
@@ -97,10 +115,75 @@ const TableView = () => {
     return String(value);
   };
 
+  // Helper functions to resolve IDs to names
+  const resolveArtistNames = (artistIds: string[]) => {
+    return artistIds.map((id) => {
+      const user = webMaster.users.find((u) => u.id === id);
+      return {
+        id,
+        name: user?.name || user?.email || `Artist ${id.slice(0, 8)}...`,
+      };
+    });
+  };
+
+  const resolveArtworkTitles = (artworkIds: string[]) => {
+    return artworkIds.map((id) => {
+      const artwork = webMaster.artworks.find((a) => a.id === id);
+      return {
+        id,
+        name: artwork?.title || `Artwork ${id.slice(0, 8)}...`,
+      };
+    });
+  };
+
+  // Handle clicking on array field counts
+  const handleArrayFieldClick = (fieldName: string, ids: string[]) => {
+    let resolvedItems: Array<{ id: string; name: string }> = [];
+    let title = "";
+
+    switch (fieldName) {
+      case "artistIds":
+        resolvedItems = resolveArtistNames(ids);
+        title = "Artists in Show";
+        break;
+      case "artworkIds":
+        resolvedItems = resolveArtworkTitles(ids);
+        title = "Artworks in Show";
+        break;
+      case "artworkOrder":
+        resolvedItems = resolveArtworkTitles(ids);
+        title = "Artwork Display Order";
+        break;
+      default:
+        resolvedItems = ids.map((id) => ({ id, name: id }));
+        title = fieldName;
+    }
+
+    setDialogData({ title, items: resolvedItems });
+    setShowDialog(true);
+  };
+
   const renderTable = () => {
     const data = webMaster[activeTab];
     const loading = webMaster.loading[activeTab];
     const error = webMaster.error[activeTab];
+
+    // Debug logging for locations
+    if (activeTab === "locations") {
+      console.log("WebMaster Locations data:", data);
+      console.log("WebMaster Locations loading:", loading);
+      console.log("WebMaster Locations error:", error);
+      console.log("Regular Locations slice data:", locations.data);
+      console.log("Regular Locations slice loading:", locations.loading);
+      console.log("Regular Locations slice error:", locations.error);
+      console.log("User auth info:", {
+        hasUser: !!auth.user,
+        user: auth.user,
+        profile: profile.data,
+        authLoading: auth.loading,
+        profileLoading: profile.loading,
+      });
+    }
 
     if (loading) {
       return (
@@ -154,21 +237,42 @@ const TableView = () => {
           <tbody className="divide-y divide-gray-200">
             {data.map((item: any, index: number) => (
               <tr key={item.id || index} className="hover:bg-gray-50">
-                {headers.map((header) => (
-                  <td
-                    key={`${item.id || index}-${header}`}
-                    className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200 max-w-xs"
-                  >
-                    <div className="truncate" title={formatValue(item[header])}>
-                      {header.includes("createdAt") ||
-                      header.includes("timestamp") ||
-                      header.includes("sentAt") ||
-                      header.includes("lastMessageTime")
-                        ? formatDate(item[header])
-                        : formatValue(item[header])}
-                    </div>
-                  </td>
-                ))}
+                {headers.map((header) => {
+                  const value = item[header];
+                  const isArrayField =
+                    activeTab === "artshows" &&
+                    (header === "artistIds" ||
+                      header === "artworkIds" ||
+                      header === "artworkOrder") &&
+                    Array.isArray(value);
+
+                  return (
+                    <td
+                      key={`${item.id || index}-${header}`}
+                      className="px-4 py-3 text-sm text-gray-900 border-b border-gray-200 max-w-xs"
+                    >
+                      {isArrayField ? (
+                        <button
+                          onClick={() => handleArrayFieldClick(header, value)}
+                          className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                          title={`Click to view ${value.length} ${header}`}
+                        >
+                          {value.length} items
+                        </button>
+                      ) : (
+                        <div className="truncate" title={formatValue(value)}>
+                          {header.includes("createdAt") ||
+                          header.includes("timestamp") ||
+                          header.includes("sentAt") ||
+                          header.includes("lastMessageTime") ||
+                          header.includes("updatedAt")
+                            ? formatDate(value)
+                            : formatValue(value)}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
@@ -283,6 +387,72 @@ const TableView = () => {
             )}
           </button>
         </div>
+
+        {/* Array Field Details Dialog */}
+        {showDialog && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white max-h-96">
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    {dialogData.title}
+                  </h3>
+                  <button
+                    onClick={() => setShowDialog(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="max-h-64 overflow-y-auto">
+                  <div className="space-y-2">
+                    {dialogData.items.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {item.name}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            ID: {item.id}
+                          </p>
+                        </div>
+                        <span className="text-xs text-gray-400 ml-2">
+                          #{index + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowDialog(false)}
+                    className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

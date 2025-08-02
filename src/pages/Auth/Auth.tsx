@@ -272,7 +272,7 @@ const Auth = () => {
                 
                 <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
                   A new artist has successfully registered on Art Space Chicago! They're now ready to begin their onboarding process and showcase their artwork in our community.
-                They were given code myartshow to signup as an artist.
+                They were given code <strong>myartshow</strong> to signup as an artist.
                   </p>
                 <div style="background-color: #e8f5e8; padding: 15px; border-radius: 6px; border-left: 4px solid #48bb78;">
                   <p style="margin: 0; color: #2f855a; font-weight: 500;">

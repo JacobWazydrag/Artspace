@@ -138,7 +138,7 @@ const Invitation = () => {
                   <h3 style="color: #2f855a; margin: 0 0 15px 0; font-size: 18px;">🚀 Ready to Get Started?</h3>
                   <p style="margin: 0 0 15px 0; color: #2f855a;">
                     Click the button below to create your account and start your artistic journey with us!
-                    Use code myartshow to signup as an artist.
+                    Use code:  <h3 style="color: #6b46c1; margin: 0 0 15px 0; font-size: 18px;"><strong>myartshow</strong></h3>
                   </p>
                   <a 
                     href="https://artspace-3d76f.web.app/" 
