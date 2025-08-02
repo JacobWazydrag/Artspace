@@ -148,6 +148,9 @@ const UserArtworks = () => {
     artshowId: "",
     locationId: "",
   });
+  const [showBuyerInfoModal, setShowBuyerInfoModal] = useState(false);
+  const [selectedBuyerArtwork, setSelectedBuyerArtwork] =
+    useState<Artwork | null>(null);
 
   const { data: user } = useAppSelector((state) => state.users);
   const { data: artworks, loading } = useAppSelector((state) => state.artwork);
@@ -283,6 +286,55 @@ const UserArtworks = () => {
     );
   };
 
+  const getSaleBadge = (artwork: Artwork) => {
+    const handleBadgeClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setSelectedBuyerArtwork(artwork);
+      setShowBuyerInfoModal(true);
+    };
+
+    if (artwork.sold && artwork.buyerInfo) {
+      return (
+        <span
+          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 cursor-pointer hover:bg-green-200 transition-colors"
+          onClick={handleBadgeClick}
+        >
+          SOLD
+        </span>
+      );
+    }
+
+    if (artwork.pendingSale && artwork.buyerInfo) {
+      return (
+        <span
+          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 cursor-pointer hover:bg-orange-200 transition-colors"
+          onClick={handleBadgeClick}
+        >
+          PENDING SALE
+        </span>
+      );
+    }
+
+    // Show non-clickable badges if no buyer info
+    if (artwork.sold) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          SOLD
+        </span>
+      );
+    }
+
+    if (artwork.pendingSale) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+          PENDING SALE
+        </span>
+      );
+    }
+
+    return null;
+  };
+
   const getShowName = (artshowId: string) => {
     const show = artshows.find((s) => s.id === artshowId);
     return show?.name || "Unknown Show";
@@ -322,7 +374,7 @@ const UserArtworks = () => {
           onClick={() => navigate("/users")}
           className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
         >
-          Back to Users
+          Back to Artists
         </button>
       </div>
 
@@ -360,7 +412,10 @@ const UserArtworks = () => {
               <div className="p-4">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="text-lg font-semibold">{artwork.title}</h3>
-                  {getStatusBadge(artwork)}
+                  <div className="flex flex-col gap-1">
+                    {getStatusBadge(artwork)}
+                    {getSaleBadge(artwork)}
+                  </div>
                 </div>
                 <p className="text-gray-600 mb-1">
                   {getMediumName(artwork.medium)}
@@ -587,6 +642,127 @@ const UserArtworks = () => {
                   })()}
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Buyer Information Modal */}
+      {showBuyerInfoModal && selectedBuyerArtwork && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Buyer Information
+                </h3>
+                <button
+                  onClick={() => setShowBuyerInfoModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="border-b pb-3">
+                  <h4 className="font-medium text-gray-900 mb-2">
+                    {selectedBuyerArtwork.title}
+                  </h4>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      selectedBuyerArtwork.sold
+                        ? "bg-green-100 text-green-800"
+                        : "bg-orange-100 text-orange-800"
+                    }`}
+                  >
+                    {selectedBuyerArtwork.sold ? "SOLD" : "PENDING SALE"}
+                  </span>
+                </div>
+
+                {selectedBuyerArtwork.buyerInfo && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Name
+                      </label>
+                      <p className="text-gray-900">
+                        {selectedBuyerArtwork.buyerInfo.firstName}{" "}
+                        {selectedBuyerArtwork.buyerInfo.lastName}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email
+                      </label>
+                      <p className="text-gray-900">
+                        {selectedBuyerArtwork.buyerInfo.email}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone
+                      </label>
+                      <p className="text-gray-900">
+                        {selectedBuyerArtwork.buyerInfo.phone}
+                      </p>
+                    </div>
+
+                    {selectedBuyerArtwork.buyerInfo.paymentMethod && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Payment Method
+                        </label>
+                        <p className="text-gray-900">
+                          {selectedBuyerArtwork.buyerInfo.paymentMethod}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedBuyerArtwork.buyerInfo.finalPricePaid && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Final Price Paid
+                        </label>
+                        <p className="text-gray-900 text-lg font-semibold text-green-600">
+                          $
+                          {selectedBuyerArtwork.buyerInfo.finalPricePaid.toLocaleString(
+                            "en-US",
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowBuyerInfoModal(false)}
+                  className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

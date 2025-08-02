@@ -12,7 +12,10 @@ import { useNavigate } from "react-router-dom";
 import ContentWrapper from "../../components/ContentWrapper";
 import { formClasses } from "../../classes/tailwindClasses";
 import { fetchArtshows } from "../../features/artshowsSlice";
-import { fetchArtistArtworks } from "../../features/artworkSlice";
+import {
+  fetchArtistArtworks,
+  fetchAllArtworks,
+} from "../../features/artworkSlice";
 import { fetchMediums } from "../../features/mediumsSlice";
 import {
   doc,
@@ -83,6 +86,7 @@ const Users = () => {
     const unsubscribe = dispatch(listenToUsers());
     dispatch(fetchArtshows());
     dispatch(fetchMediums());
+    dispatch(fetchAllArtworks());
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
@@ -496,6 +500,18 @@ const Users = () => {
     return medium?.name || mediumId;
   };
 
+  const getUserArtworkStats = (userId: string) => {
+    const userArtworks = artworks.filter(
+      (artwork) => artwork.artistId === userId
+    );
+    const soldCount = userArtworks.filter((artwork) => artwork.sold).length;
+    const pendingCount = userArtworks.filter(
+      (artwork) => artwork.pendingSale
+    ).length;
+
+    return { soldCount, pendingCount, totalCount: userArtworks.length };
+  };
+
   const filteredUsers = useMemo(() => {
     return users
       .filter((user) => {
@@ -861,63 +877,125 @@ const Users = () => {
 
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
-            {filteredUsers.map((user) => (
-              <div
-                key={user.id}
-                className="bg-white rounded-lg shadow p-6 flex flex-col items-center w-full max-w-md lg:max-w-lg"
-              >
-                <img
-                  className="h-20 w-20 rounded-full object-cover mb-3"
-                  src={
-                    user.photoUrl ||
-                    "https://ui-avatars.com/api/?name=" +
-                      encodeURIComponent(user.name)
-                  }
-                  alt={user.name}
-                />
-                <div className="text-lg font-semibold text-gray-900 text-center">
-                  {user.name}
-                </div>
-                <div className="text-xs text-gray-500 text-center mb-4">
-                  {user.email}
-                </div>
-                <div className="flex flex-col items-center space-y-2 w-full">
-                  <button
-                    onClick={() => handlePreviewUser(user)}
-                    className="text-blue-600 hover:text-blue-900 w-full"
-                  >
-                    Preview
-                  </button>
-                  {/* <button
+            {filteredUsers.map((user) => {
+              const { soldCount, pendingCount } = getUserArtworkStats(
+                user.id || ""
+              );
+
+              return (
+                <div
+                  key={user.id}
+                  className="bg-white rounded-lg shadow p-6 flex flex-col items-center w-full max-w-md lg:max-w-lg cursor-pointer hover:shadow-lg transition-shadow relative"
+                  onClick={() => handlePreviewUser(user)}
+                >
+                  {/* Sale Status Indicators - Top Right */}
+                  {(soldCount > 0 || pendingCount > 0) && (
+                    <div className="absolute top-3 right-3 flex flex-col gap-1">
+                      {soldCount > 0 && (
+                        <div className="flex items-center gap-1 px-2 py-1 bg-green-100 rounded-full">
+                          <svg
+                            className="w-3 h-3 text-green-600"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.51-1.31c-.562-.649-1.413-1.076-2.353-1.253V5z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span className="text-xs font-medium text-green-700">
+                            {soldCount}
+                          </span>
+                        </div>
+                      )}
+                      {pendingCount > 0 && (
+                        <div className="flex items-center gap-1 px-2 py-1 bg-orange-100 rounded-full">
+                          <svg
+                            className="w-3 h-3 text-orange-600"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span className="text-xs font-medium text-orange-700">
+                            {pendingCount}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <img
+                    className="h-20 w-20 rounded-full object-cover mb-3"
+                    src={
+                      user.photoUrl ||
+                      "https://ui-avatars.com/api/?name=" +
+                        encodeURIComponent(user.name)
+                    }
+                    alt={user.name}
+                  />
+                  <div className="text-lg font-semibold text-gray-900 text-center">
+                    {user.name}
+                  </div>
+                  <div className="text-xs text-gray-500 text-center mb-4">
+                    {user.email}
+                  </div>
+                  <div className="flex flex-col items-center space-y-2 w-full">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePreviewUser(user);
+                      }}
+                      className="text-blue-600 hover:text-blue-900 w-full"
+                    >
+                      Preview
+                    </button>
+                    {/* <button
                     onClick={() => handleOpenModal(user)}
                     className="text-indigo-600 hover:text-indigo-900 w-full"
                   >
                     Edit
                   </button> */}
-                  {user.status !== "showing" && user.status !== "accepted" && (
-                    <button
-                      onClick={() => handleAcceptIntoShow(user)}
-                      className={`text-green-600 hover:text-green-900 w-full ${
-                        !user.artworks || user.artworks.length === 0
-                          ? "opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
-                      disabled={!user.artworks || user.artworks.length === 0}
-                    >
-                      Accept into Show
-                    </button>
-                  )}
-                  {user.artshowId && (
-                    <button
-                      onClick={() => handleRemoveFromShow(user)}
-                      className="text-red-600 hover:text-red-900 w-full"
-                    >
-                      Remove from Show
-                    </button>
-                  )}
+                    {user.status !== "showing" &&
+                      user.status !== "accepted" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAcceptIntoShow(user);
+                          }}
+                          className={`text-green-600 hover:text-green-900 w-full ${
+                            !user.artworks || user.artworks.length === 0
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }`}
+                          disabled={
+                            !user.artworks || user.artworks.length === 0
+                          }
+                        >
+                          Accept into Show
+                        </button>
+                      )}
+                    {user.artshowId && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveFromShow(user);
+                        }}
+                        className="text-red-600 hover:text-red-900 w-full"
+                      >
+                        Remove from Show
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -1513,16 +1591,63 @@ const Users = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Artworks
                           </label>
-                          <button
-                            className="text-indigo-600 hover:text-indigo-900 hover:underline text-sm p-0 bg-transparent border-none cursor-pointer"
-                            style={{ outline: "none" }}
-                            onClick={() => {
-                              handleClosePreviewModal();
-                              navigate(`/users/${selectedUser.id}/artworks`);
-                            }}
-                          >
-                            {selectedUser.artworks.length} artworks
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              className="text-indigo-600 hover:text-indigo-900 hover:underline text-sm p-0 bg-transparent border-none cursor-pointer"
+                              style={{ outline: "none" }}
+                              onClick={() => {
+                                handleClosePreviewModal();
+                                navigate(`/users/${selectedUser.id}/artworks`);
+                              }}
+                            >
+                              {selectedUser.artworks.length} artworks
+                            </button>
+                            {(() => {
+                              const { soldCount, pendingCount } =
+                                getUserArtworkStats(selectedUser.id || "");
+                              return (
+                                <>
+                                  {soldCount > 0 && (
+                                    <div className="flex items-center gap-1 px-2 py-1 bg-green-100 rounded-full">
+                                      <svg
+                                        className="w-3 h-3 text-green-600"
+                                        fill="currentColor"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.51-1.31c-.562-.649-1.413-1.076-2.353-1.253V5z"
+                                          clipRule="evenodd"
+                                        />
+                                      </svg>
+                                      <span className="text-xs font-medium text-green-700">
+                                        {soldCount}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {pendingCount > 0 && (
+                                    <div className="flex items-center gap-1 px-2 py-1 bg-orange-100 rounded-full">
+                                      <svg
+                                        className="w-3 h-3 text-orange-600"
+                                        fill="currentColor"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                          clipRule="evenodd"
+                                        />
+                                      </svg>
+                                      <span className="text-xs font-medium text-orange-700">
+                                        {pendingCount}
+                                      </span>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
                         </div>
                       )}
                     </div>

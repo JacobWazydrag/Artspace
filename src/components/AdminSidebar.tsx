@@ -290,7 +290,7 @@ const Sidebar = () => {
                 >
                   <span className="flex items-center gap-3">
                     <UsersIcon className="w-5 h-5" />
-                    Artists Page
+                    Artists Show
                   </span>
                 </a>
               </li>
@@ -303,7 +303,7 @@ const Sidebar = () => {
                 >
                   <span className="flex items-center gap-3">
                     <PaintBrushIcon className="w-5 h-5" />
-                    Artworks Page
+                    Artworks Show
                   </span>
                 </a>
               </li>
