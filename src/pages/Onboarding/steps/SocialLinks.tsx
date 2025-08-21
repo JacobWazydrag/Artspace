@@ -169,13 +169,19 @@ const SocialLinks = ({ onComplete, isComplete }: SocialLinksProps) => {
               value={socialLinks.instagram}
               onChange={(e) => handleSocialChange(e.target.value)}
               className={input}
-              placeholder="Enter your Instagram username"
+              placeholder="Instagram username"
               disabled={isSubmitting}
               required
             />
             <p className="mt-2 text-sm text-gray-500">
               Note: Your Instagram account must be set to "taggable" for this to
               work properly.
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
+              Format MUST BE what comes after the url in your instagram profile.
+              <br />
+              Example: www.instagram.com/wazman_jake/ would be{" "}
+              <span className="font-bold">wazman_jake</span>
             </p>
           </div>
         </div>

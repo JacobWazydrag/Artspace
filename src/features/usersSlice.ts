@@ -89,6 +89,19 @@ export const fetchUsers = createAsyncThunk("users/fetchUsers", async () => {
   return users;
 });
 
+export const fetchAllUsers = createAsyncThunk(
+  "users/fetchAllUsers",
+  async () => {
+    const usersRef = collection(db, "users");
+    const querySnapshot = await getDocs(usersRef);
+    const users = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as User[];
+    return users;
+  }
+);
+
 export const fetchUserById = createAsyncThunk(
   "users/fetchUserById",
   async (userId: string) => {
@@ -215,6 +228,20 @@ const usersSlice = createSlice({
       .addCase(fetchUsersForChat.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Failed to fetch users for chat";
+      })
+      // Fetch All Users (including admins/employees)
+      .addCase(fetchAllUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllUsers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchAllUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Failed to fetch all users";
       })
       // Fetch User by ID
       .addCase(fetchUserById.pending, (state) => {

@@ -71,6 +71,7 @@ const Onboarding = () => {
   const steps = [
     {
       title: "Basic Information",
+      shortTitle: "Basic",
       component: (
         <BasicInfo
           onComplete={handleStepComplete}
@@ -84,6 +85,7 @@ const Onboarding = () => {
     },
     {
       title: "Contact Information",
+      shortTitle: "Contact",
       component: (
         <ContactInfo
           onComplete={handleStepComplete}
@@ -96,6 +98,7 @@ const Onboarding = () => {
     },
     {
       title: "Links",
+      shortTitle: "Links",
       component: (
         <SocialLinks
           onComplete={handleStepComplete}
@@ -109,6 +112,7 @@ const Onboarding = () => {
     },
     {
       title: "Artwork Upload",
+      shortTitle: "Artworks",
       component: (
         <ArtworkUpload
           onComplete={handleStepComplete}
@@ -128,7 +132,7 @@ const Onboarding = () => {
   const currentStepData = steps[safeCurrentStep];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 dark:bg-slate-900">
       <div className="max-w-3xl mx-auto">
         {/* Progress bar */}
         <div className="mb-8">
@@ -141,7 +145,10 @@ const Onboarding = () => {
                 } cursor-pointer`}
                 onClick={() => handleStepClick(index)}
               >
-                {step.title}
+                <span className="sm:hidden">
+                  {(step as any).shortTitle || step.title}
+                </span>
+                <span className="hidden sm:inline">{step.title}</span>
               </div>
             ))}
           </div>

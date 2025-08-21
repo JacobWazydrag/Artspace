@@ -779,6 +779,10 @@ const ArtworkUpload = ({ onComplete, isComplete }: ArtworkUploadProps) => {
               className={input}
               required
               max={new Date().toISOString().split("T")[0]}
+              //style only the icon to be white in dark mode
+              style={{
+                color: "white",
+              }}
             />
           </div>
           <div>

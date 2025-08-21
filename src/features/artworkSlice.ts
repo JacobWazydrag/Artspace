@@ -551,6 +551,7 @@ export const fetchSoldArtworks = createAsyncThunk(
             width: data.width,
             availability: data.availability,
             markedPending: data.markedPending,
+            markedSold: data.markedSold,
             sold: data.sold,
             pendingSale: data.pendingSale,
             locationId: data.locationId,

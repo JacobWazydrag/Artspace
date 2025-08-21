@@ -42,6 +42,7 @@ import TableView from "./pages/TableView/TableView";
 import Purchases from "./pages/Purchases/Purchases";
 import SendMail from "./pages/SendMail/SendMail";
 import PreShowWaiting from "./pages/PreShowWaiting/PreShowWaiting";
+import AdminArtshowPDF from "./pages/PDF/AdminArtshowPDF";
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -191,6 +192,7 @@ const App = () => {
             <Route path="chat" element={<ChatPage />} />
             <Route path="invitation" element={<Invitation />} />
             <Route path="send-mail" element={<SendMail />} />
+            <Route path="pdf" element={<AdminArtshowPDF />} />
             <Route path="product-management" element={<ProductManagement />} />
             <Route path="test-cloud-function" element={<TestCloudFunction />} />
             <Route path="settings" element={<Settings />} />

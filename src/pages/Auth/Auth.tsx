@@ -231,7 +231,8 @@ const Auth = () => {
   const getRoleFromCode = (
     code: string
   ): "employee" | "on-boarding" | "artist" | "admin" => {
-    switch (code) {
+    const normalizedCode = (code || "").trim().toLowerCase();
+    switch (normalizedCode) {
       case "myartshow":
         return "on-boarding";
       case "myartspace":
@@ -547,7 +548,12 @@ const Auth = () => {
                   <input
                     type="text"
                     placeholder="Enter signup code"
-                    className={authInput}
+                    className={`${authInput} normal-case`}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="off"
+                    inputMode="text"
                     {...register("code")}
                   />
                   {errors.code ? (
@@ -563,24 +569,71 @@ const Auth = () => {
               </button>
             </div>
 
-            <div className="text-sm font-light py-4">
+            <div className="py-4">
               {authType === "login" ? (
-                <span>
-                  Don&apos;t have an account yet?{" "}
-                  <span onClick={handleAuthType} className={link}>
-                    Sign up
-                  </span>
-                </span>
+                <div className="group relative overflow-hidden rounded-xl border border-violet-300/30 bg-gradient-to-br from-slate-800/60 to-slate-800/20 p-4 shadow-sm transition-colors hover:border-violet-400/60">
+                  <div className="pointer-events-none absolute -inset-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-violet-500/20 via-fuchsia-400/10 to-pink-400/20 blur-lg" />
+                  </div>
+                  <div className="relative flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-slate-200 text-sm font-medium">
+                        Don&apos;t have an account yet?
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAuthType}
+                      className="inline-flex shrink-0 items-center gap-2 rounded-md bg-violet-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                    >
+                      Create account
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="h-4 w-4"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M3 10a1 1 0 011-1h9.586L10.293 5.707a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 11-1.414-1.414L13.586 11H4a1 1 0 01-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <span>
-                  Already have an account?{" "}
-                  <span
-                    onClick={handleAuthType}
-                    className="font-medium cursor-pointer text-primary-600 hover:underline dark:text-primary-500"
-                  >
-                    Sign in
-                  </span>
-                </span>
+                <div className="group relative overflow-hidden rounded-xl border border-violet-300/30 bg-gradient-to-br from-slate-800/60 to-slate-800/20 p-4 shadow-sm transition-colors hover:border-violet-400/60">
+                  <div className="pointer-events-none absolute -inset-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-violet-500/20 via-fuchsia-400/10 to-pink-400/20 blur-lg" />
+                  </div>
+                  <div className="relative flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-slate-200 text-sm font-medium">
+                        Already have an account?
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAuthType}
+                      className="inline-flex shrink-0 items-center gap-2 rounded-md bg-violet-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                    >
+                      Sign in
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="h-4 w-4"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M3 10a1 1 0 011-1h9.586L10.293 5.707a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 11-1.414-1.414L13.586 11H4a1 1 0 01-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
 

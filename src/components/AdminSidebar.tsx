@@ -20,6 +20,7 @@ import {
   ShoppingCartIcon,
   TableCellsIcon,
   PaperAirplaneIcon,
+  DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
 
@@ -97,6 +98,19 @@ const Sidebar = () => {
                   <span className="flex items-center gap-3">
                     <CalendarDaysIcon className="w-5 h-5" />
                     Art Shows
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/pdf"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/pdf") ? "bg-gray-900" : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <DocumentArrowDownIcon className="w-5 h-5" />
+                    PDF
                   </span>
                 </Link>
               </li>

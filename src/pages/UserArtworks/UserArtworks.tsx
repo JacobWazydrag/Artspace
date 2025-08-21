@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
-import { fetchUserById } from "../../features/usersSlice";
+import { fetchUserById, fetchAllUsers } from "../../features/usersSlice";
 import {
   fetchArtistArtworks,
   updateArtworkShowStatus,
@@ -161,6 +161,7 @@ const UserArtworks = () => {
   useEffect(() => {
     if (userId) {
       dispatch(fetchUserById(userId));
+      dispatch(fetchAllUsers()); // Fetch all users including admins/employees to find who marked pending
       dispatch(fetchArtistArtworks(userId));
       dispatch(fetchArtshows());
       dispatch(fetchLocations());
@@ -343,6 +344,11 @@ const UserArtworks = () => {
   const getMediumName = (mediumId: string) => {
     const medium = mediums?.find((m) => m.id === mediumId);
     return medium?.name || mediumId;
+  };
+
+  const getUserName = (userId: string) => {
+    const foundUser = user.find((u) => u.id === userId);
+    return foundUser?.name || "Unknown User";
   };
 
   if (loading) {
@@ -747,6 +753,28 @@ const UserArtworks = () => {
                               maximumFractionDigits: 2,
                             }
                           )}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedBuyerArtwork.markedPending && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Marked Pending By
+                        </label>
+                        <p className="text-gray-900">
+                          {getUserName(selectedBuyerArtwork.markedPending)}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedBuyerArtwork.markedSold && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Marked Sold By
+                        </label>
+                        <p className="text-gray-900">
+                          {getUserName(selectedBuyerArtwork.markedSold)}
                         </p>
                       </div>
                     )}

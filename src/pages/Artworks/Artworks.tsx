@@ -6,7 +6,7 @@ import {
 } from "../../features/artworkSlice";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
-import { fetchUsers } from "../../features/usersSlice";
+import { fetchAllUsers } from "../../features/usersSlice";
 import { fetchArtshows } from "../../features/artshowsSlice";
 import { fetchLocations } from "../../features/locationsSlice";
 import { fetchMediums } from "../../features/mediumsSlice";
@@ -220,7 +220,7 @@ const Artworks = () => {
 
   useEffect(() => {
     dispatch(fetchAllArtworks());
-    dispatch(fetchUsers());
+    dispatch(fetchAllUsers());
     dispatch(fetchArtshows());
     dispatch(fetchLocations());
     dispatch(fetchMediums());
@@ -402,6 +402,11 @@ const Artworks = () => {
   const getMediumName = (mediumId: string) => {
     const medium = mediums?.find((m) => m.id === mediumId);
     return medium?.name || mediumId;
+  };
+
+  const getUserName = (userId: string) => {
+    const foundUser = users?.find((u) => u.id === userId);
+    return foundUser?.name || "Unknown User";
   };
 
   const handleShowAssignment = (artworkId: string) => {
@@ -747,7 +752,7 @@ const Artworks = () => {
       await updateDoc(artworkRef, {
         sold: true,
         pendingSale: false, // Clear pending status if it was set
-        markedPending: null, // Clear the employee who marked as pending
+        markedSold: user?.id, // Track which employee marked as sold
         buyerInfo: {
           ...soldBuyerInfo,
           finalPricePaid: parseFloat(soldBuyerInfo.finalPricePaid) || 0,
@@ -1716,6 +1721,26 @@ const Artworks = () => {
                                   }).format(
                                     previewArtwork.buyerInfo.finalPricePaid
                                   )}
+                                </p>
+                              </div>
+                            )}
+                            {previewArtwork.markedPending && (
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">
+                                  Marked Pending By:
+                                </span>
+                                <p className="text-gray-900">
+                                  {getUserName(previewArtwork.markedPending)}
+                                </p>
+                              </div>
+                            )}
+                            {previewArtwork.markedSold && (
+                              <div>
+                                <span className="text-sm font-medium text-gray-500">
+                                  Marked Sold By:
+                                </span>
+                                <p className="text-gray-900">
+                                  {getUserName(previewArtwork.markedSold)}
                                 </p>
                               </div>
                             )}

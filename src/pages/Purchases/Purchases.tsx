@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import { fetchSoldArtworks } from "../../features/artworkSlice";
-import { fetchUsers } from "../../features/usersSlice";
+import { fetchAllUsers } from "../../features/usersSlice";
 import { fetchMediums } from "../../features/mediumsSlice";
 import ContentWrapper from "../../components/ContentWrapper";
 import { formClasses } from "../../classes/tailwindClasses";
@@ -33,7 +33,7 @@ const Purchases = () => {
 
   useEffect(() => {
     dispatch(fetchSoldArtworks());
-    dispatch(fetchUsers());
+    dispatch(fetchAllUsers());
     dispatch(fetchMediums());
   }, [dispatch]);
 
@@ -96,6 +96,11 @@ const Purchases = () => {
       style: "currency",
       currency: "USD",
     }).format(price);
+  };
+
+  const getUserName = (userId: string) => {
+    const foundUser = users?.find((u) => u.id === userId);
+    return foundUser?.name || "Unknown User";
   };
 
   return (
@@ -296,6 +301,11 @@ const Purchases = () => {
                         {artist.name}
                       </div>
                     )}
+                    {artwork.height && artwork.width && artwork.uom && (
+                      <div className="text-sm text-gray-600 text-center mb-2">
+                        {artwork.height} X {artwork.width} {artwork.uom}
+                      </div>
+                    )}
                     <div className="flex flex-col items-center space-y-2 w-full">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}
@@ -315,8 +325,14 @@ const Purchases = () => {
 
         {/* Buyer Info Modal */}
         {selectedArtwork && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center">
-            <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl max-h-[90vh] shadow-lg rounded-md bg-white overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center"
+            onClick={() => setSelectedArtwork(null)}
+          >
+            <div
+              className="relative top-10 mx-auto p-5 border w-full max-w-2xl max-h-[90vh] shadow-lg rounded-md bg-white overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-gray-900">
                   Purchase Details
@@ -436,6 +452,26 @@ const Purchases = () => {
                           )}
                         </p>
                       </div>
+                      {selectedArtwork.markedPending && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">
+                            Marked Pending By:
+                          </span>
+                          <p className="text-gray-900">
+                            {getUserName(selectedArtwork.markedPending)}
+                          </p>
+                        </div>
+                      )}
+                      {selectedArtwork.markedSold && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">
+                            Marked Sold By:
+                          </span>
+                          <p className="text-gray-900">
+                            {getUserName(selectedArtwork.markedSold)}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
