@@ -21,6 +21,7 @@ import {
   TableCellsIcon,
   PaperAirplaneIcon,
   DocumentArrowDownIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
 
@@ -48,7 +49,7 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="bg-gray-800 text-white w-64 min-h-screen p-4 flex flex-col">
+    <div className="bg-gray-800 text-white w-64 h-screen overflow-y-auto p-4 flex flex-col">
       <div className="mb-8 flex items-center gap-3">
         <img
           src={logo}
@@ -124,6 +125,21 @@ const Sidebar = () => {
                   <span className="flex items-center gap-3">
                     <UsersIcon className="w-5 h-5" />
                     Artists
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/user-access"
+                  className={`block px-4 py-2 rounded ${
+                    isActive("/user-access")
+                      ? "bg-gray-900"
+                      : "hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <KeyIcon className="w-5 h-5" />
+                    User Access
                   </span>
                 </Link>
               </li>

@@ -157,6 +157,9 @@ const UserArtworks = () => {
   const { data: artshows } = useAppSelector((state) => state.artshows);
   const { data: locations } = useAppSelector((state) => state.locations);
   const { data: mediums } = useAppSelector((state) => state.mediums);
+  const { data: profile } = useAppSelector((state) => state.profile);
+  const canManageShowAssignment =
+    profile?.role === "admin" || profile?.role === "employee";
 
   useEffect(() => {
     if (userId) {
@@ -377,7 +380,7 @@ const UserArtworks = () => {
           <p className="text-gray-600">{currentUser.email}</p>
         </div>
         <button
-          onClick={() => navigate("/users")}
+          onClick={() => navigate(-1)}
           className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
         >
           Back to Artists
@@ -455,7 +458,7 @@ const UserArtworks = () => {
                   </p>
                 )}
 
-                {
+                {canManageShowAssignment && (
                   <button
                     onClick={() => handleShowAssignment(artwork.id!)}
                     disabled={currentUser.status !== "showing"}
@@ -467,7 +470,7 @@ const UserArtworks = () => {
                   >
                     Change Show Assignment
                   </button>
-                }
+                )}
               </div>
             </div>
           ))}
@@ -487,7 +490,7 @@ const UserArtworks = () => {
         />
       )}
 
-      {showAssignmentModal && (
+      {canManageShowAssignment && showAssignmentModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3">

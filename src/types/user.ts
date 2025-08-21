@@ -40,4 +40,5 @@ export interface UserProfile {
   notificationPreferences?: {
     email: { active: boolean; frequency: "daily" | "weekly" | "monthly" };
   };
+  showAccess?: string[];
 }

@@ -12,12 +12,15 @@ import {
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
+import { UsersIcon } from "@heroicons/react/24/outline";
+import { useMemo } from "react";
 
 const OnboardingSidebar = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
 
   const { user } = useAppSelector((state) => state.auth);
+  const { data: artshows } = useAppSelector((state) => state.artshows);
   const hasUnread = useAppSelector((state) =>
     selectHasUnreadMessages(state, user?.id || "")
   );
@@ -31,6 +34,11 @@ const OnboardingSidebar = () => {
   const isActive = (path: string) => {
     return location.pathname === path;
   };
+
+  const accessibleShows = useMemo(() => {
+    const ids = (user?.showAccess as string[]) || [];
+    return artshows.filter((s) => ids.includes(s.id || ""));
+  }, [artshows, user?.showAccess]);
 
   return (
     <div className="bg-gray-800 text-white w-64 min-h-screen p-4 flex flex-col">
@@ -76,6 +84,33 @@ const OnboardingSidebar = () => {
               </span>
             </Link>
           </li>
+          {/* Accessible Shows (User Access) */}
+          {accessibleShows.length > 0 && (
+            <li className="mt-4">
+              <div className="text-xs uppercase tracking-wide text-gray-400 px-4 mb-2">
+                Collaborate with Artspace
+              </div>
+              <ul className="space-y-2">
+                {accessibleShows.map((show) => (
+                  <li key={show.id}>
+                    <Link
+                      to={`/onboarding/show/${show.id}/users`}
+                      className={`block px-4 py-2 rounded ${
+                        isActive(`/onboarding/show/${show.id}/users`)
+                          ? "bg-gray-900"
+                          : "hover:bg-gray-700"
+                      }`}
+                    >
+                      <span className="flex items-center gap-3">
+                        <UsersIcon className="w-5 h-5" />
+                        {show.name}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          )}
         </ul>
       </nav>
 

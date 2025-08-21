@@ -61,6 +61,7 @@ export interface User {
   notificationPreferences?: {
     email: { active: boolean; frequency: "daily" | "weekly" | "monthly" };
   };
+  showAccess?: string[];
 }
 
 interface UsersState {

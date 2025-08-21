@@ -32,7 +32,7 @@ import ChatPage from "./pages/ChatPage";
 import Invitation from "./pages/Invitation/Invitation";
 import Settings from "./pages/Settings/Settings";
 import Curate from "./pages/Curate/Curate";
-import { getDoc, doc } from "firebase/firestore";
+import { getDoc, doc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import { fetchUserChats } from "./features/chatSlice";
 import PublicArtshowArtworks from "./pages/PublicArtshow/PublicArtshowArtworks";
@@ -43,6 +43,8 @@ import Purchases from "./pages/Purchases/Purchases";
 import SendMail from "./pages/SendMail/SendMail";
 import PreShowWaiting from "./pages/PreShowWaiting/PreShowWaiting";
 import AdminArtshowPDF from "./pages/PDF/AdminArtshowPDF";
+import ShowUsers from "./pages/Artist/ShowUsers";
+import UserAccess from "./pages/UserAccess/UserAccess";
 
 const App = () => {
   const dispatch = useAppDispatch();
@@ -76,6 +78,7 @@ const App = () => {
               interestInShow: userData?.interestInShow || "",
               artshowId: userData?.artshowId,
               stripeId: userData?.stripeId,
+              showAccess: userData?.showAccess || [],
             })
           );
 
@@ -109,6 +112,55 @@ const App = () => {
     };
   }, [dispatch, user?.id]);
 
+  // Live subscription to current user's Firestore doc (updates showAccess, etc.)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const userRef = doc(db, "users", user.id);
+    const unsubscribe = onSnapshot(userRef, (snap) => {
+      if (!snap.exists()) return;
+      const data: any = snap.data();
+
+      const toIso = (ts: any, fallback: string) =>
+        typeof ts === "string"
+          ? ts
+          : ts?.toDate?.().toISOString?.() || fallback;
+
+      dispatch(
+        login({
+          email: user.email,
+          id: user.id,
+          photoUrl: data?.photoUrl ?? user.photoUrl ?? null,
+          name: data?.name ?? user.name ?? "",
+          bio: data?.bio ?? user.bio ?? "",
+          role: data?.role ?? user.role ?? "on-boarding",
+          status: data?.status ?? user.status ?? null,
+          contactInfo: data?.contactInfo ??
+            user.contactInfo ?? {
+              address: "",
+              phone: "",
+            },
+          socialLinks: data?.socialLinks ?? user.socialLinks ?? {},
+          onboardingCompleted:
+            data?.onboardingCompleted ?? user.onboardingCompleted ?? false,
+          createdAt: toIso(
+            data?.createdAt,
+            user.createdAt || new Date().toISOString()
+          ),
+          updatedAt: toIso(data?.updatedAt, new Date().toISOString()),
+          assignedLocations:
+            data?.assignedLocations ?? user.assignedLocations ?? [],
+          interestInShow: data?.interestInShow ?? user.interestInShow ?? "",
+          artshowId: data?.artshowId ?? user.artshowId,
+          stripeId: data?.stripeId ?? user.stripeId,
+          showAccess: data?.showAccess ?? user.showAccess ?? [],
+        })
+      );
+    });
+
+    return () => unsubscribe();
+  }, [dispatch, user?.id]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" />
@@ -133,6 +185,8 @@ const App = () => {
             <Route index element={<Onboarding />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="show/:showId/users" element={<ShowUsers />} />
+            <Route path="users/:userId/artworks" element={<UserArtworks />} />
           </Route>
 
           {/* Waiting Approval Route */}
@@ -167,6 +221,11 @@ const App = () => {
             <Route path="artist/onboard-art" element={<OnboardArt />} />
             <Route path="artist/chat" element={<ChatPage />} />
             <Route path="artist/settings" element={<Settings />} />
+            <Route path="artist/show/:showId/users" element={<ShowUsers />} />
+            <Route
+              path="artist/users/:userId/artworks"
+              element={<UserArtworks />}
+            />
           </Route>
 
           {/* Admin Routes */}
@@ -184,6 +243,7 @@ const App = () => {
             <Route path="artshows/:id/artists" element={<ArtshowArtists />} />
             <Route path="mediums" element={<Mediums />} />
             <Route path="users" element={<Users />} />
+            <Route path="user-access" element={<UserAccess />} />
             <Route path="users/:userId/artworks" element={<UserArtworks />} />
             <Route path="artworks" element={<Artworks />} />
             <Route path="purchases" element={<Purchases />} />

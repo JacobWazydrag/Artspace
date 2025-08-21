@@ -43,4 +43,5 @@ export interface User {
     zelle?: string;
   };
   shownAtArtspace?: boolean;
+  showAccess?: string[];
 }
