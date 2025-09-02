@@ -1,23 +1,53 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import { sendMail } from "../../features/mailSlice";
 import { fetchUsers } from "../../features/usersSlice";
 import { toast } from "react-hot-toast";
 import { mergeEmailConfig } from "../../utils/emailConfig";
+import { fetchArtshows } from "../../features/artshowsSlice";
 
 const SendMail = () => {
   const dispatch = useAppDispatch();
   const { data: users } = useAppSelector((state) => state.users);
+  const { data: artshows } = useAppSelector((state) => state.artshows);
 
   // State for custom message functionality
   const [selectedUserEmails, setSelectedUserEmails] = useState<string[]>([]);
   const [subject, setSubject] = useState("");
   const [htmlMessage, setHtmlMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedShowNames, setSelectedShowNames] = useState<string[]>([]);
+  const [isArtShowDropdownOpen, setIsArtShowDropdownOpen] = useState(false);
+  const artShowDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     dispatch(fetchUsers());
+    dispatch(fetchArtshows());
   }, [dispatch]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        artShowDropdownRef.current &&
+        !artShowDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsArtShowDropdownOpen(false);
+      }
+    }
+    if (isArtShowDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isArtShowDropdownOpen]);
+
+  const filteredUsers = useMemo(() => {
+    if (!selectedShowNames.length) return users;
+    return users.filter((user) =>
+      selectedShowNames.includes((user as any).interestInShow || "")
+    );
+  }, [users, selectedShowNames]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +102,7 @@ const SendMail = () => {
   };
 
   const handleSelectAllUsers = () => {
-    const allEmails = users.map((user) => user.email);
+    const allEmails = filteredUsers.map((user) => user.email);
     setSelectedUserEmails(allEmails);
   };
 
@@ -83,8 +113,8 @@ const SendMail = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Send Mail</h1>
-        <p className="text-gray-600 mb-6">
+        <h1 className="text-3xl font-bold mb-8 dark:text-white">Send Mail</h1>
+        <p className="text-gray-600 mb-6 dark:text-white">
           Send custom messages to registered users
         </p>
 
@@ -95,6 +125,68 @@ const SendMail = () => {
                 Recipients
               </label>
               <div className="border border-gray-300 rounded-md p-4 max-h-60 overflow-y-auto">
+                <div className="flex gap-2 mb-3 items-center flex-wrap">
+                  <div className="relative" ref={artShowDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsArtShowDropdownOpen((open) => !open)}
+                      className="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50"
+                    >
+                      Art Show
+                      <svg
+                        className="w-2.5 h-2.5 inline ml-2"
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 10 6"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="m1 1 4 4 4-4"
+                        />
+                      </svg>
+                    </button>
+                    {isArtShowDropdownOpen && (
+                      <div className="z-10 absolute mt-2 w-56 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                        <ul className="py-2 text-sm text-gray-700 max-h-60 overflow-y-auto">
+                          {artshows.map((show) => (
+                            <li key={show.id}>
+                              <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedShowNames.includes(
+                                    show.name
+                                  )}
+                                  onChange={(e) => {
+                                    setSelectedShowNames((prev) =>
+                                      e.target.checked
+                                        ? [...prev, show.name]
+                                        : prev.filter((n) => n !== show.name)
+                                    );
+                                  }}
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="ml-2">{show.name}</span>
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                  {selectedShowNames.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedShowNames([])}
+                      className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                    >
+                      Clear Filter
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-2 mb-3">
                   <button
                     type="button"
@@ -112,7 +204,7 @@ const SendMail = () => {
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {users.map((user) => (
+                  {filteredUsers.map((user) => (
                     <label
                       key={user.id}
                       className="flex items-center space-x-2"
@@ -129,7 +221,7 @@ const SendMail = () => {
                     </label>
                   ))}
                 </div>
-                {users.length === 0 && (
+                {filteredUsers.length === 0 && (
                   <p className="text-gray-500 text-sm">No users found</p>
                 )}
               </div>

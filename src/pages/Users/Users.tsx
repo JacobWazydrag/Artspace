@@ -701,6 +701,13 @@ const Users = () => {
       <ContentWrapper loading={loading}>
         <div className="flex justify-between items-center mb-6">
           <h1 className={h1ReverseDark}>Artists</h1>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Showing</span>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              {filteredUsers.length}
+            </span>
+            <span className="text-sm text-gray-500">of {users.length}</span>
+          </div>
         </div>
 
         <div className="mb-8 space-y-6">
