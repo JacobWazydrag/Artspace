@@ -362,6 +362,26 @@ const Artshows = () => {
     }
   };
 
+  const handleSetActiveStatus = async () => {
+    if (!editingArtshow?.id) {
+      setFormData((prev) => ({ ...prev, status: "active" }));
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await updateDoc(doc(db, "artshows", editingArtshow.id), {
+        status: "active",
+      });
+      setFormData((prev) => ({ ...prev, status: "active" }));
+      setEditingArtshow({ ...editingArtshow, status: "active" });
+      dispatch(fetchArtshows());
+    } catch (error) {
+      console.error("Error setting artshow status to active:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handlePreview = (artshow: Artshow) => {
     setPreviewArtshow(artshow);
     setIsPreviewOpen(true);
@@ -568,6 +588,36 @@ const Artshows = () => {
                       disabled={isSubmitting}
                     />
                   </div>
+                  {editingArtshow && (
+                    <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-md p-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Status
+                        </label>
+                        <span
+                          className={`inline-block mt-1 px-2 py-1 text-xs font-semibold rounded-full ${
+                            formData.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : formData.status === "closed"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {formData.status}
+                        </span>
+                      </div>
+                      {formData.status !== "active" && (
+                        <button
+                          type="button"
+                          onClick={handleSetActiveStatus}
+                          disabled={isSubmitting}
+                          className="ml-4 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                        >
+                          Set Active
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <div className="flex justify-end space-x-3">
                     <button
                       type="button"

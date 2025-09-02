@@ -45,25 +45,29 @@ const ImageGallery = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-slate-900 bg-opacity-95 z-50 flex items-center justify-center">
       <button
         onClick={onClose}
         className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300"
       >
         ×
       </button>
-      <button
-        onClick={handlePrevious}
-        className="absolute left-4 text-white text-4xl hover:text-gray-300"
-      >
-        ‹
-      </button>
-      <button
-        onClick={handleNext}
-        className="absolute right-4 text-white text-4xl hover:text-gray-300"
-      >
-        ›
-      </button>
+      {images.length > 1 && (
+        <button
+          onClick={handlePrevious}
+          className="absolute left-4 text-white text-4xl hover:text-gray-300"
+        >
+          ‹
+        </button>
+      )}
+      {images.length > 1 && (
+        <button
+          onClick={handleNext}
+          className="absolute right-4 text-white text-4xl hover:text-gray-300"
+        >
+          ›
+        </button>
+      )}
       <div className="max-w-4xl max-h-[90vh]">
         <img
           src={images[currentIndex]}
@@ -71,9 +75,11 @@ const ImageGallery = ({
           className="max-w-full max-h-[90vh] object-contain"
         />
       </div>
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
-        {currentIndex + 1} / {images.length}
-      </div>
+      {images.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
+          {currentIndex + 1} / {images.length}
+        </div>
+      )}
     </div>
   );
 };
@@ -101,7 +107,7 @@ const CollapsibleDescription = ({ text }: { text: string }) => {
       </AnimatePresence>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="text-blue-600 hover:text-blue-800 text-sm font-medium mt-1 flex items-center"
+        className="text-amber-700 hover:text-amber-800 text-sm font-medium mt-1 flex items-center"
       >
         {isExpanded ? (
           <>
@@ -160,7 +166,7 @@ const BioModal = ({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg max-w-md w-full p-6"
+        className="bg-gray-100 rounded-lg max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-start mb-4">
@@ -264,18 +270,22 @@ const ArtistGallery = ({
             className="w-full max-h-[70vh] object-contain rounded-lg"
           />
 
-          <button
-            onClick={handlePrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-gray-300"
-          >
-            ‹
-          </button>
-          <button
-            onClick={handleNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-gray-300"
-          >
-            ›
-          </button>
+          {artworks.length > 1 && (
+            <button
+              onClick={handlePrevious}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-gray-300"
+            >
+              ‹
+            </button>
+          )}
+          {artworks.length > 1 && (
+            <button
+              onClick={handleNext}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl hover:text-gray-300"
+            >
+              ›
+            </button>
+          )}
         </div>
 
         <div className="mt-4 text-white">
@@ -300,9 +310,11 @@ const ArtistGallery = ({
           <p className="text-gray-300">{currentArtwork.description}</p>
         </div>
 
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
-          {currentIndex + 1} / {artworks.length}
-        </div>
+        {artworks.length > 1 && (
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
+            {currentIndex + 1} / {artworks.length}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -345,12 +357,12 @@ const PublicArtshow = () => {
   if (!activeArtshow) return <div>No active artshow found.</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       {/* Hero Section*/}
-      <section className="bg-white">
+      <section className="bg-black">
         <div className="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12">
           {/* Mobile Image - only visible on mobile, full-bleed */}
-          <div className="block lg:hidden w-screen max-w-none relative left-1/2 right-1/2 -mx-[50vw] -mt-8 mb-8 h-[300px] overflow-hidden bg-white">
+          <div className="block lg:hidden w-screen max-w-none relative left-1/2 right-1/2 -mx-[50vw] -mt-8 mb-8 h-[300px] overflow-hidden bg-gray-100">
             {activeArtshow.photoUrl && (
               <img
                 src={activeArtshow.photoUrl}
@@ -362,10 +374,10 @@ const PublicArtshow = () => {
           </div>
           {/* Text content */}
           <div className="mr-auto place-self-center lg:col-span-7">
-            <h1 className="max-w-2xl mb-4 text-4xl font-extrabold tracking-tight leading-none md:text-5xl xl:text-6xl text-black">
+            <h1 className="max-w-2xl mb-4 text-4xl font-extrabold tracking-tight leading-none md:text-5xl xl:text-6xl text-white">
               {activeArtshow.name}
             </h1>
-            <p className="max-w-2xl mb-6 font-light text-black lg:mb-8 md:text-lg lg:text-xl">
+            <p className="max-w-2xl mb-6 font-light text-gray-200 lg:mb-8 md:text-lg lg:text-xl">
               {new Date(
                 activeArtshow.startDate + "T00:00:00"
               ).toLocaleDateString()}{" "}
@@ -374,7 +386,7 @@ const PublicArtshow = () => {
                 activeArtshow.endDate + "T00:00:00"
               ).toLocaleDateString()}
             </p>
-            <p className="max-w-2xl mb-6 font-light text-black lg:mb-8 md:text-lg lg:text-xl">
+            <p className="max-w-2xl mb-6 font-light text-gray-200 lg:mb-8 md:text-lg lg:text-xl">
               {activeArtshow.description}
             </p>
           </div>
@@ -404,7 +416,7 @@ const PublicArtshow = () => {
 
       {/* Artists Section */}
       <div className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-gray-900 mb-8">
+        <h2 className="text-3xl font-bold text-slate-900 mb-8">
           Featured Artists
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -434,7 +446,7 @@ const PublicArtshow = () => {
                       className="w-16 h-16 rounded-full object-cover mr-4"
                     />
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">
+                      <h3 className="text-xl font-bold text-slate-900">
                         {artist.name || "Artist"}
                       </h3>
                       {artist.socialLinks?.instagram && (
@@ -451,7 +463,7 @@ const PublicArtshow = () => {
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition-colors duration-200"
+                          className="inline-flex items-center text-amber-700 hover:text-amber-800 transition-colors duration-200"
                           onClick={() => {
                             // Track Instagram link click
                             trackCustomEvent(
@@ -503,7 +515,7 @@ const PublicArtshow = () => {
                           photoUrl: artist.photoUrl,
                         });
                       }}
-                      className="flex-1 bg-sky-500 text-white py-2 px-4 rounded-md hover:bg-sky-600 transition-colors duration-200"
+                      className="flex-1 bg-slate-800 text-white py-2 px-4 rounded-md hover:bg-slate-900 transition-colors duration-200"
                     >
                       About the Artist
                     </button>
@@ -523,7 +535,7 @@ const PublicArtshow = () => {
                             artworks: artistArtworks,
                           });
                         }}
-                        className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors duration-200"
+                        className="flex-1  bg-orange-100 text-stone-500 py-2 px-4 rounded-md hover:bg-orange-50 transition-colors duration-200"
                       >
                         View {artistArtworks.length} Artwork
                         {artistArtworks.length !== 1 ? "s" : ""}
@@ -538,7 +550,7 @@ const PublicArtshow = () => {
       </div>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
+      <footer className="bg-slate-900 text-white py-8">
         <div className="container mx-auto px-4">
           <div className="text-center">
             <h2 className="text-2xl font-bold mb-4">ArtSpace</h2>

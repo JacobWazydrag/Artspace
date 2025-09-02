@@ -26,6 +26,7 @@ interface FilterState {
   mediums: string[];
   priceRange: string;
   saleStatuses: string[];
+  currentShow: string;
 }
 
 interface ImageGalleryProps {
@@ -152,6 +153,11 @@ const Artworks = () => {
   const { data: profile } = useAppSelector((state) => state.profile);
   const { user } = useAppSelector((state) => state.auth);
   const { h1ReverseDark } = formClasses;
+  const isEmployee = profile?.role === "employee";
+  const activeShow = React.useMemo(
+    () => artshows?.find((s) => s.status === "active") || null,
+    [artshows]
+  );
   const [filters, setFilters] = useState<FilterState>({
     search: "",
     showStatuses: [],
@@ -160,6 +166,7 @@ const Artworks = () => {
     mediums: [],
     priceRange: "",
     saleStatuses: [],
+    currentShow: "",
   });
   const [selectedArtwork, setSelectedArtwork] = useState<{
     images: string[];
@@ -186,6 +193,8 @@ const Artworks = () => {
   const [isPriceRangeDropdownOpen, setIsPriceRangeDropdownOpen] =
     useState(false);
   const [isSaleStatusDropdownOpen, setIsSaleStatusDropdownOpen] =
+    useState(false);
+  const [isCurrentShowDropdownOpen, setIsCurrentShowDropdownOpen] =
     useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [selectedPendingArtworkId, setSelectedPendingArtworkId] = useState<
@@ -217,6 +226,8 @@ const Artworks = () => {
   const mediumDropdownRef = useRef<HTMLDivElement>(null);
   const priceRangeDropdownRef = useRef<HTMLDivElement>(null);
   const saleStatusDropdownRef = useRef<HTMLDivElement>(null);
+  const currentShowDropdownRef = useRef<HTMLDivElement>(null);
+  const hasInitializedCurrentShowRef = useRef<boolean>(false);
 
   useEffect(() => {
     dispatch(fetchAllArtworks());
@@ -328,6 +339,33 @@ const Artworks = () => {
     };
   }, [isSaleStatusDropdownOpen]);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        currentShowDropdownRef.current &&
+        !currentShowDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsCurrentShowDropdownOpen(false);
+      }
+    }
+    if (isCurrentShowDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isCurrentShowDropdownOpen]);
+
+  useEffect(() => {
+    if (!isEmployee && activeShow && !hasInitializedCurrentShowRef.current) {
+      setFilters((prev) => ({
+        ...prev,
+        currentShow: prev.currentShow || (activeShow.id as string) || "",
+      }));
+      hasInitializedCurrentShowRef.current = true;
+    }
+  }, [activeShow, isEmployee]);
+
   const filteredArtworks = artworks.filter((artwork) => {
     if (
       filters.search &&
@@ -386,8 +424,36 @@ const Artworks = () => {
       }
     }
 
+    if (filters.currentShow && artwork.artshowId !== filters.currentShow) {
+      return false;
+    }
+
     return true;
   });
+
+  const employeeOrderedArtworks = React.useMemo(() => {
+    if (!isEmployee || !activeShow) return [] as typeof artworks;
+    const inActiveShow = artworks.filter(
+      (a) => a.artshowId === activeShow.id && a.showStatus === "accepted"
+    );
+    const order = activeShow.artworkOrder || [];
+    if (!order.length) return inActiveShow;
+    const indexById = new Map(order.map((id, idx) => [id, idx]));
+    return [...inActiveShow].sort((a, b) => {
+      const ai = indexById.has(a.id)
+        ? (indexById.get(a.id) as number)
+        : Number.MAX_SAFE_INTEGER;
+      const bi = indexById.has(b.id)
+        ? (indexById.get(b.id) as number)
+        : Number.MAX_SAFE_INTEGER;
+      if (ai !== bi) return ai - bi;
+      return (a.title || "").localeCompare(b.title || "");
+    });
+  }, [isEmployee, activeShow, artworks]);
+
+  const artworksToDisplay = isEmployee
+    ? employeeOrderedArtworks
+    : filteredArtworks;
 
   const getArtistInfo = (artistId: string) => {
     const artist = users?.find((user) => user.id === artistId);
@@ -797,662 +863,746 @@ const Artworks = () => {
         </div>
 
         {/* Search and Filters */}
-        <div className="mb-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Search Bar */}
-            <div className="relative w-full mb-4">
-              <input
-                type="search"
-                id="search"
-                value={filters.search}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, search: e.target.value }))
-                }
-                className="block p-2.5 w-full z-20 text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Search artworks by title..."
-              />
-              <button
-                type="button"
-                className="absolute top-0 end-0 p-2.5 text-sm font-medium h-full text-white bg-blue-700 rounded-e-lg border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300"
-              >
-                <svg
-                  className="w-4 h-4"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
-                  />
-                </svg>
-                <span className="sr-only">Search</span>
-              </button>
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4">
-              {/* Show Status Filter */}
-              <div
-                className="relative flex-1 min-w-[200px]"
-                ref={showStatusDropdownRef}
-              >
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() => setIsShowStatusDropdownOpen((open) => !open)}
-                >
-                  Show Status
-                  <svg
-                    className="w-2.5 h-2.5 ms-2.5"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 10 6"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 1 4 4 4-4"
-                    />
-                  </svg>
-                </button>
-                {isShowStatusDropdownOpen && (
-                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
-                    <ul className="py-2 text-sm text-gray-700">
-                      {["accepted", "rejected"].map((status) => (
-                        <li key={status}>
-                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.showStatuses.includes(status)}
-                              onChange={(e) => {
-                                setFilters((prev) => ({
-                                  ...prev,
-                                  showStatuses: e.target.checked
-                                    ? [...prev.showStatuses, status]
-                                    : prev.showStatuses.filter(
-                                        (s) => s !== status
-                                      ),
-                                }));
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <span className="ml-2 capitalize">{status}</span>
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Artist Filter */}
-              <div
-                className="relative flex-1 min-w-[200px]"
-                ref={artistDropdownRef}
-              >
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() => setIsArtistDropdownOpen((open) => !open)}
-                >
-                  Artist
-                  <svg
-                    className="w-2.5 h-2.5 ms-2.5"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 10 6"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 1 4 4 4-4"
-                    />
-                  </svg>
-                </button>
-                {isArtistDropdownOpen && (
-                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
-                    <ul className="py-2 text-sm text-gray-700">
-                      {users?.map((user) => (
-                        <li key={user.id}>
-                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.artists.includes(user.id!)}
-                              onChange={(e) => {
-                                setFilters((prev) => ({
-                                  ...prev,
-                                  artists: e.target.checked
-                                    ? [...prev.artists, user.id!]
-                                    : prev.artists.filter(
-                                        (id) => id !== user.id
-                                      ),
-                                }));
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <span className="ml-2">{user.name}</span>
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Shows Filter */}
-              <div
-                className="relative flex-1 min-w-[200px]"
-                ref={showsDropdownRef}
-              >
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() => setIsShowsDropdownOpen((open) => !open)}
-                >
-                  Previous Shows
-                  <svg
-                    className="w-2.5 h-2.5 ms-2.5"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 10 6"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 1 4 4 4-4"
-                    />
-                  </svg>
-                </button>
-                {isShowsDropdownOpen && (
-                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
-                    <ul className="py-2 text-sm text-gray-700">
-                      {artshows?.map((show) => (
-                        <li key={show.id}>
-                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.shows.includes(show.id!)}
-                              onChange={(e) => {
-                                setFilters((prev) => ({
-                                  ...prev,
-                                  shows: e.target.checked
-                                    ? [...prev.shows, show.id!]
-                                    : prev.shows.filter((id) => id !== show.id),
-                                }));
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <span className="ml-2">{show.name}</span>
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Medium Filter */}
-              <div
-                className="relative flex-1 min-w-[200px]"
-                ref={mediumDropdownRef}
-              >
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() => setIsMediumDropdownOpen((open) => !open)}
-                >
-                  Medium
-                  <svg
-                    className="w-2.5 h-2.5 ms-2.5"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 10 6"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 1 4 4 4-4"
-                    />
-                  </svg>
-                </button>
-                {isMediumDropdownOpen && (
-                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
-                    <ul className="py-2 text-sm text-gray-700">
-                      {mediums?.map((medium) => (
-                        <li key={medium.id}>
-                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.mediums.includes(medium.id!)}
-                              onChange={(e) => {
-                                setFilters((prev) => ({
-                                  ...prev,
-                                  mediums: e.target.checked
-                                    ? [...prev.mediums, medium.id!]
-                                    : prev.mediums.filter(
-                                        (id) => id !== medium.id
-                                      ),
-                                }));
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <span className="ml-2">{medium.name}</span>
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Price Range Filter */}
-              <div
-                className="relative flex-1 min-w-[200px]"
-                ref={priceRangeDropdownRef}
-              >
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() => setIsPriceRangeDropdownOpen((open) => !open)}
-                >
-                  Price Range
-                  <svg
-                    className="w-2.5 h-2.5 ms-2.5"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 10 6"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 1 4 4 4-4"
-                    />
-                  </svg>
-                </button>
-                {isPriceRangeDropdownOpen && (
-                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
-                    <ul className="py-2 text-sm text-gray-700">
-                      <li>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="priceRange"
-                            checked={filters.priceRange === ""}
-                            onChange={() =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                priceRange: "",
-                              }))
-                            }
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                          />
-                          <span className="ml-2">Any Price</span>
-                        </label>
-                      </li>
-                      <li>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="priceRange"
-                            checked={filters.priceRange === "0-49"}
-                            onChange={() =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                priceRange: "0-49",
-                              }))
-                            }
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                          />
-                          <span className="ml-2">Under $50</span>
-                        </label>
-                      </li>
-                      <li>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="priceRange"
-                            checked={filters.priceRange === "50-149"}
-                            onChange={() =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                priceRange: "50-149",
-                              }))
-                            }
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                          />
-                          <span className="ml-2">$50 - $149</span>
-                        </label>
-                      </li>
-                      <li>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="priceRange"
-                            checked={filters.priceRange === "150-499"}
-                            onChange={() =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                priceRange: "150-499",
-                              }))
-                            }
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                          />
-                          <span className="ml-2">$150 - $499</span>
-                        </label>
-                      </li>
-                      <li>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="priceRange"
-                            checked={filters.priceRange === "500-999"}
-                            onChange={() =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                priceRange: "500-999",
-                              }))
-                            }
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                          />
-                          <span className="ml-2">$500 - $999</span>
-                        </label>
-                      </li>
-                      <li>
-                        <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="priceRange"
-                            checked={filters.priceRange === "1000"}
-                            onChange={() =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                priceRange: "1000",
-                              }))
-                            }
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                          />
-                          <span className="ml-2">$1,000+</span>
-                        </label>
-                      </li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Sale Status Filter */}
-              <div
-                className="relative flex-1 min-w-[200px]"
-                ref={saleStatusDropdownRef}
-              >
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
-                  onClick={() => setIsSaleStatusDropdownOpen((open) => !open)}
-                >
-                  Sale Status
-                  <svg
-                    className="w-2.5 h-2.5 ms-2.5"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 10 6"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 1 4 4 4-4"
-                    />
-                  </svg>
-                </button>
-                {isSaleStatusDropdownOpen && (
-                  <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
-                    <ul className="py-2 text-sm text-gray-700">
-                      {["available", "pending", "sold"].map((status) => (
-                        <li key={status}>
-                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.saleStatuses.includes(status)}
-                              onChange={(e) => {
-                                setFilters((prev) => ({
-                                  ...prev,
-                                  saleStatuses: e.target.checked
-                                    ? [...prev.saleStatuses, status]
-                                    : prev.saleStatuses.filter(
-                                        (s) => s !== status
-                                      ),
-                                }));
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <span className="ml-2 capitalize">{status}</span>
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Active Filters */}
-            {(filters.search ||
-              filters.showStatuses.length > 0 ||
-              filters.artists.length > 0 ||
-              filters.shows.length > 0 ||
-              filters.mediums.length > 0 ||
-              filters.priceRange ||
-              filters.saleStatuses.length > 0) && (
-              <div className="mt-4 flex items-center justify-between">
-                <div className="flex flex-wrap gap-2">
-                  {filters.search && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                      Search: {filters.search}
-                      <button
-                        onClick={() =>
-                          setFilters((prev) => ({ ...prev, search: "" }))
-                        }
-                        className="ml-2 text-blue-600 hover:text-blue-800"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
-                  {filters.showStatuses.map((status) => (
-                    <span
-                      key={status}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                    >
-                      Status: {status}
-                      <button
-                        onClick={() =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            showStatuses: prev.showStatuses.filter(
-                              (s) => s !== status
-                            ),
-                          }))
-                        }
-                        className="ml-2 text-blue-600 hover:text-blue-800"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  {filters.artists.map((artistId) => {
-                    const artist = users?.find((u) => u.id === artistId);
-                    return (
-                      <span
-                        key={artistId}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                      >
-                        Artist: {artist?.name}
-                        <button
-                          onClick={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              artists: prev.artists.filter(
-                                (id) => id !== artistId
-                              ),
-                            }))
-                          }
-                          className="ml-2 text-blue-600 hover:text-blue-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    );
-                  })}
-                  {filters.shows.map((showId) => {
-                    const show = artshows?.find((s) => s.id === showId);
-                    return (
-                      <span
-                        key={showId}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                      >
-                        Show: {show?.name}
-                        <button
-                          onClick={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              shows: prev.shows.filter((id) => id !== showId),
-                            }))
-                          }
-                          className="ml-2 text-blue-600 hover:text-blue-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    );
-                  })}
-                  {filters.mediums.map((mediumId) => {
-                    const medium = mediums?.find((m) => m.id === mediumId);
-                    return (
-                      <span
-                        key={mediumId}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                      >
-                        Medium: {medium?.name}
-                        <button
-                          onClick={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              mediums: prev.mediums.filter(
-                                (id) => id !== mediumId
-                              ),
-                            }))
-                          }
-                          className="ml-2 text-blue-600 hover:text-blue-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    );
-                  })}
-                  {filters.priceRange && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                      Price:{" "}
-                      {filters.priceRange === "1000"
-                        ? "$1,000+"
-                        : filters.priceRange === ""
-                        ? "Any Price"
-                        : `$${filters.priceRange.split("-")[0]} - $${
-                            filters.priceRange.split("-")[1]
-                          }`}
-                      <button
-                        onClick={() =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            priceRange: "",
-                          }))
-                        }
-                        className="ml-2 text-blue-600 hover:text-blue-800"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
-                  {filters.saleStatuses.map((status) => (
-                    <span
-                      key={status}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                    >
-                      Sale: {status}
-                      <button
-                        onClick={() =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            saleStatuses: prev.saleStatuses.filter(
-                              (s) => s !== status
-                            ),
-                          }))
-                        }
-                        className="ml-2 text-blue-600 hover:text-blue-800"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <button
-                  onClick={() =>
-                    setFilters({
-                      search: "",
-                      showStatuses: [],
-                      artists: [],
-                      shows: [],
-                      mediums: [],
-                      priceRange: "",
-                      saleStatuses: [],
-                    })
+        {!isEmployee && (
+          <div className="mb-8">
+            <div className="max-w-4xl mx-auto">
+              {/* Search Bar */}
+              <div className="relative w-full mb-4">
+                <input
+                  type="search"
+                  id="search"
+                  value={filters.search}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, search: e.target.value }))
                   }
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+                  className="block p-2.5 w-full z-20 text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Search artworks by title..."
+                />
+                <button
+                  type="button"
+                  className="absolute top-0 end-0 p-2.5 text-sm font-medium h-full text-white bg-blue-700 rounded-e-lg border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300"
                 >
-                  Clear all filters
+                  <svg
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                    />
+                  </svg>
+                  <span className="sr-only">Search</span>
                 </button>
               </div>
-            )}
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-4">
+                {/* Show Status Filter */}
+                <div
+                  className="relative flex-1 min-w-[200px]"
+                  ref={showStatusDropdownRef}
+                >
+                  <button
+                    type="button"
+                    className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                    onClick={() => setIsShowStatusDropdownOpen((open) => !open)}
+                  >
+                    Show Status
+                    <svg
+                      className="w-2.5 h-2.5 ms-2.5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 10 6"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 4 4 4-4"
+                      />
+                    </svg>
+                  </button>
+                  {isShowStatusDropdownOpen && (
+                    <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                      <ul className="py-2 text-sm text-gray-700">
+                        {["accepted", "rejected"].map((status) => (
+                          <li key={status}>
+                            <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={filters.showStatuses.includes(status)}
+                                onChange={(e) => {
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    showStatuses: e.target.checked
+                                      ? [...prev.showStatuses, status]
+                                      : prev.showStatuses.filter(
+                                          (s) => s !== status
+                                        ),
+                                  }));
+                                }}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="ml-2 capitalize">{status}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Artist Filter */}
+                <div
+                  className="relative flex-1 min-w-[200px]"
+                  ref={artistDropdownRef}
+                >
+                  <button
+                    type="button"
+                    className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                    onClick={() => setIsArtistDropdownOpen((open) => !open)}
+                  >
+                    Artist
+                    <svg
+                      className="w-2.5 h-2.5 ms-2.5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 10 6"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 4 4 4-4"
+                      />
+                    </svg>
+                  </button>
+                  {isArtistDropdownOpen && (
+                    <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
+                      <ul className="py-2 text-sm text-gray-700">
+                        {users?.map((user) => (
+                          <li key={user.id}>
+                            <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={filters.artists.includes(user.id!)}
+                                onChange={(e) => {
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    artists: e.target.checked
+                                      ? [...prev.artists, user.id!]
+                                      : prev.artists.filter(
+                                          (id) => id !== user.id
+                                        ),
+                                  }));
+                                }}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="ml-2">{user.name}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Current Show Filter */}
+                <div
+                  className="relative flex-1 min-w-[200px]"
+                  ref={currentShowDropdownRef}
+                >
+                  <button
+                    type="button"
+                    className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                    onClick={() =>
+                      setIsCurrentShowDropdownOpen((open) => !open)
+                    }
+                  >
+                    Current Show
+                    <svg
+                      className="w-2.5 h-2.5 ms-2.5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 10 6"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 4 4 4-4"
+                      />
+                    </svg>
+                  </button>
+                  {isCurrentShowDropdownOpen && (
+                    <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
+                      <ul className="py-2 text-sm text-gray-700">
+                        {artshows?.map((show) => (
+                          <li key={show.id}>
+                            <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="currentShow"
+                                checked={
+                                  filters.currentShow === (show.id as string)
+                                }
+                                onChange={() => {
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    currentShow: show.id as string,
+                                  }));
+                                }}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                              />
+                              <span className="ml-2">{show.name}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Shows Filter */}
+                <div
+                  className="relative flex-1 min-w-[200px]"
+                  ref={showsDropdownRef}
+                >
+                  <button
+                    type="button"
+                    className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                    onClick={() => setIsShowsDropdownOpen((open) => !open)}
+                  >
+                    Previous Shows
+                    <svg
+                      className="w-2.5 h-2.5 ms-2.5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 10 6"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 4 4 4-4"
+                      />
+                    </svg>
+                  </button>
+                  {isShowsDropdownOpen && (
+                    <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
+                      <ul className="py-2 text-sm text-gray-700">
+                        {artshows?.map((show) => (
+                          <li key={show.id}>
+                            <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={filters.shows.includes(show.id!)}
+                                onChange={(e) => {
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    shows: e.target.checked
+                                      ? [...prev.shows, show.id!]
+                                      : prev.shows.filter(
+                                          (id) => id !== show.id
+                                        ),
+                                  }));
+                                }}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="ml-2">{show.name}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Medium Filter */}
+                <div
+                  className="relative flex-1 min-w-[200px]"
+                  ref={mediumDropdownRef}
+                >
+                  <button
+                    type="button"
+                    className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                    onClick={() => setIsMediumDropdownOpen((open) => !open)}
+                  >
+                    Medium
+                    <svg
+                      className="w-2.5 h-2.5 ms-2.5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 10 6"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 4 4 4-4"
+                      />
+                    </svg>
+                  </button>
+                  {isMediumDropdownOpen && (
+                    <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow max-h-60 overflow-y-auto">
+                      <ul className="py-2 text-sm text-gray-700">
+                        {mediums?.map((medium) => (
+                          <li key={medium.id}>
+                            <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={filters.mediums.includes(medium.id!)}
+                                onChange={(e) => {
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    mediums: e.target.checked
+                                      ? [...prev.mediums, medium.id!]
+                                      : prev.mediums.filter(
+                                          (id) => id !== medium.id
+                                        ),
+                                  }));
+                                }}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="ml-2">{medium.name}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Price Range Filter */}
+                <div
+                  className="relative flex-1 min-w-[200px]"
+                  ref={priceRangeDropdownRef}
+                >
+                  <button
+                    type="button"
+                    className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                    onClick={() => setIsPriceRangeDropdownOpen((open) => !open)}
+                  >
+                    Price Range
+                    <svg
+                      className="w-2.5 h-2.5 ms-2.5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 10 6"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 4 4 4-4"
+                      />
+                    </svg>
+                  </button>
+                  {isPriceRangeDropdownOpen && (
+                    <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                      <ul className="py-2 text-sm text-gray-700">
+                        <li>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="priceRange"
+                              checked={filters.priceRange === ""}
+                              onChange={() =>
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  priceRange: "",
+                                }))
+                              }
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className="ml-2">Any Price</span>
+                          </label>
+                        </li>
+                        <li>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="priceRange"
+                              checked={filters.priceRange === "0-49"}
+                              onChange={() =>
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  priceRange: "0-49",
+                                }))
+                              }
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className="ml-2">Under $50</span>
+                          </label>
+                        </li>
+                        <li>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="priceRange"
+                              checked={filters.priceRange === "50-149"}
+                              onChange={() =>
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  priceRange: "50-149",
+                                }))
+                              }
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className="ml-2">$50 - $149</span>
+                          </label>
+                        </li>
+                        <li>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="priceRange"
+                              checked={filters.priceRange === "150-499"}
+                              onChange={() =>
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  priceRange: "150-499",
+                                }))
+                              }
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className="ml-2">$150 - $499</span>
+                          </label>
+                        </li>
+                        <li>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="priceRange"
+                              checked={filters.priceRange === "500-999"}
+                              onChange={() =>
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  priceRange: "500-999",
+                                }))
+                              }
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className="ml-2">$500 - $999</span>
+                          </label>
+                        </li>
+                        <li>
+                          <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="priceRange"
+                              checked={filters.priceRange === "1000"}
+                              onChange={() =>
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  priceRange: "1000",
+                                }))
+                              }
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className="ml-2">$1,000+</span>
+                          </label>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sale Status Filter */}
+                <div
+                  className="relative flex-1 min-w-[200px]"
+                  ref={saleStatusDropdownRef}
+                >
+                  <button
+                    type="button"
+                    className="w-full inline-flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-100"
+                    onClick={() => setIsSaleStatusDropdownOpen((open) => !open)}
+                  >
+                    Sale Status
+                    <svg
+                      className="w-2.5 h-2.5 ms-2.5"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 10 6"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 4 4 4-4"
+                      />
+                    </svg>
+                  </button>
+                  {isSaleStatusDropdownOpen && (
+                    <div className="z-10 absolute w-full mt-2 bg-white divide-y divide-gray-100 rounded-lg shadow">
+                      <ul className="py-2 text-sm text-gray-700">
+                        {["available", "pending", "sold"].map((status) => (
+                          <li key={status}>
+                            <label className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={filters.saleStatuses.includes(status)}
+                                onChange={(e) => {
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    saleStatuses: e.target.checked
+                                      ? [...prev.saleStatuses, status]
+                                      : prev.saleStatuses.filter(
+                                          (s) => s !== status
+                                        ),
+                                  }));
+                                }}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="ml-2 capitalize">{status}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Active Filters */}
+              {(filters.search ||
+                filters.showStatuses.length > 0 ||
+                filters.artists.length > 0 ||
+                filters.shows.length > 0 ||
+                filters.mediums.length > 0 ||
+                filters.priceRange ||
+                filters.saleStatuses.length > 0 ||
+                filters.currentShow) && (
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="flex flex-wrap gap-2">
+                    {filters.currentShow && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        Current Show:{" "}
+                        {artshows?.find((s) => s.id === filters.currentShow)
+                          ?.name || filters.currentShow}
+                        <button
+                          onClick={() =>
+                            setFilters((prev) => ({ ...prev, currentShow: "" }))
+                          }
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
+                    {filters.search && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        Search: {filters.search}
+                        <button
+                          onClick={() =>
+                            setFilters((prev) => ({ ...prev, search: "" }))
+                          }
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
+                    {filters.showStatuses.map((status) => (
+                      <span
+                        key={status}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                      >
+                        Status: {status}
+                        <button
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              showStatuses: prev.showStatuses.filter(
+                                (s) => s !== status
+                              ),
+                            }))
+                          }
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    {filters.artists.map((artistId) => {
+                      const artist = users?.find((u) => u.id === artistId);
+                      return (
+                        <span
+                          key={artistId}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                        >
+                          Artist: {artist?.name}
+                          <button
+                            onClick={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                artists: prev.artists.filter(
+                                  (id) => id !== artistId
+                                ),
+                              }))
+                            }
+                            className="ml-2 text-blue-600 hover:text-blue-800"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                    {filters.shows.map((showId) => {
+                      const show = artshows?.find((s) => s.id === showId);
+                      return (
+                        <span
+                          key={showId}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                        >
+                          Show: {show?.name}
+                          <button
+                            onClick={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                shows: prev.shows.filter((id) => id !== showId),
+                              }))
+                            }
+                            className="ml-2 text-blue-600 hover:text-blue-800"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                    {filters.mediums.map((mediumId) => {
+                      const medium = mediums?.find((m) => m.id === mediumId);
+                      return (
+                        <span
+                          key={mediumId}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                        >
+                          Medium: {medium?.name}
+                          <button
+                            onClick={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                mediums: prev.mediums.filter(
+                                  (id) => id !== mediumId
+                                ),
+                              }))
+                            }
+                            className="ml-2 text-blue-600 hover:text-blue-800"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                    {filters.priceRange && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        Price:{" "}
+                        {filters.priceRange === "1000"
+                          ? "$1,000+"
+                          : filters.priceRange === ""
+                          ? "Any Price"
+                          : `$${filters.priceRange.split("-")[0]} - $${
+                              filters.priceRange.split("-")[1]
+                            }`}
+                        <button
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              priceRange: "",
+                            }))
+                          }
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
+                    {filters.saleStatuses.map((status) => (
+                      <span
+                        key={status}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                      >
+                        Sale: {status}
+                        <button
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              saleStatuses: prev.saleStatuses.filter(
+                                (s) => s !== status
+                              ),
+                            }))
+                          }
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() =>
+                      setFilters({
+                        search: "",
+                        showStatuses: [],
+                        artists: [],
+                        shows: [],
+                        mediums: [],
+                        priceRange: "",
+                        saleStatuses: [],
+                        currentShow: (activeShow?.id as string) || "",
+                      })
+                    }
+                    className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Artworks Card Grid */}
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
-            {filteredArtworks.length === 0 ? (
+            {artworksToDisplay.length === 0 ? (
               <div className="col-span-full text-center text-gray-500">
                 No Artworks Found
               </div>
             ) : (
-              filteredArtworks.map((artwork) => {
+              artworksToDisplay.map((artwork, index) => {
                 const artist = getArtistInfo(artwork.artistId);
                 return (
                   <div
                     key={artwork.id}
-                    className="bg-white rounded-lg shadow p-6 flex flex-col items-center w-full max-w-md lg:max-w-lg cursor-pointer hover:shadow-lg transition-shadow"
+                    className="relative bg-white rounded-lg shadow p-6 flex flex-col items-center w-full max-w-md lg:max-w-lg cursor-pointer hover:shadow-lg transition-shadow"
                     onClick={() => setPreviewArtwork(artwork)}
                   >
+                    {isEmployee && (
+                      <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs font-semibold rounded-full h-6 w-6 flex items-center justify-center">
+                        {index + 1}
+                      </div>
+                    )}
                     <div className="w-full flex justify-center mb-3">
                       {artwork.images && artwork.images.length > 0 ? (
                         <img
@@ -2052,6 +2202,27 @@ const Artworks = () => {
                       required
                     />
                   </div>
+
+                  {/* Artwork Image Preview (prominent at the bottom) */}
+                  {(() => {
+                    const artwork = artworks.find(
+                      (a) => a.id === selectedPendingArtworkId
+                    );
+                    const imageUrl =
+                      artwork?.images && artwork.images.length > 0
+                        ? artwork.images[0]
+                        : null;
+                    if (!imageUrl) return null;
+                    return (
+                      <div className="pt-2">
+                        <img
+                          src={imageUrl}
+                          alt={artwork?.title || "Artwork image"}
+                          className="w-full max-h-72 object-contain rounded-md border shadow"
+                        />
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex justify-end space-x-3 pt-4">
                     <button

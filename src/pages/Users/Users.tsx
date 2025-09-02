@@ -32,6 +32,11 @@ import { NumericFormat } from "react-number-format";
 import { sendMail } from "../../features/mailSlice";
 import { mergeEmailConfig } from "../../utils/emailConfig";
 
+// Persistent storage keys
+const FILTERS_STORAGE_KEY = "usersPageFilters";
+const SCROLL_STORAGE_KEY = "usersPageScrollY";
+const ANCHOR_STORAGE_KEY = "usersPageAnchorUserId";
+
 interface FilterState {
   search: string;
   roles: string[];
@@ -67,11 +72,31 @@ const Users = () => {
     selectedArtworks: [] as string[],
   });
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<FilterState>({
-    search: "",
-    roles: ["artist", "on-boarding"],
-    statuses: [],
-    interestInShow: [],
+  const [filters, setFilters] = useState<FilterState>(() => {
+    try {
+      const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          search: typeof parsed.search === "string" ? parsed.search : "",
+          roles: Array.isArray(parsed.roles)
+            ? parsed.roles
+            : ["artist", "on-boarding"],
+          statuses: Array.isArray(parsed.statuses) ? parsed.statuses : [],
+          interestInShow: Array.isArray(parsed.interestInShow)
+            ? parsed.interestInShow
+            : [],
+        } as FilterState;
+      }
+    } catch (e) {
+      // Ignore parse errors and fall back to defaults
+    }
+    return {
+      search: "",
+      roles: ["artist", "on-boarding"],
+      statuses: [],
+      interestInShow: [],
+    } as FilterState;
   });
   const { user: currentUser } = useAppSelector((state) => state.auth);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
@@ -80,6 +105,7 @@ const Users = () => {
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const artShowDropdownRef = useRef<HTMLDivElement>(null);
+  const hasRestoredScrollRef = useRef(false);
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -146,6 +172,15 @@ const Users = () => {
     };
   }, [isArtShowDropdownOpen]);
 
+  // Persist filters to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+    } catch (e) {
+      // Ignore storage write errors
+    }
+  }, [filters]);
+
   const handleOpenModal = (user?: User) => {
     if (user) {
       setSelectedUser(user);
@@ -207,6 +242,12 @@ const Users = () => {
   };
 
   const handleArtworksClick = (userId: string) => {
+    try {
+      sessionStorage.setItem(SCROLL_STORAGE_KEY, String(window.scrollY));
+      sessionStorage.setItem(ANCHOR_STORAGE_KEY, userId);
+    } catch (e) {
+      // Ignore storage write errors
+    }
     navigate(`/users/${userId}/artworks`);
   };
 
@@ -558,6 +599,95 @@ const Users = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [users, filters, currentUser]);
 
+  // Restore scroll position after skeleton/loading settles and content height is ready
+  useEffect(() => {
+    if (hasRestoredScrollRef.current) return;
+    let cancelled = false;
+
+    let savedY: number | null = null;
+    let anchorUserId: string | null = null;
+    try {
+      const raw = sessionStorage.getItem(SCROLL_STORAGE_KEY);
+      if (raw) {
+        const parsed = parseInt(raw, 10);
+        if (!Number.isNaN(parsed)) savedY = parsed;
+      }
+      anchorUserId = sessionStorage.getItem(ANCHOR_STORAGE_KEY);
+    } catch (e) {
+      // Ignore storage read errors
+    }
+
+    if (savedY === null && !anchorUserId) {
+      hasRestoredScrollRef.current = true;
+      return;
+    }
+
+    const start = Date.now();
+    const maxWaitMs = 2000;
+
+    const tryRestore = () => {
+      if (cancelled) return;
+      const scrollHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight
+      );
+      const maxScrollTop = Math.max(0, scrollHeight - window.innerHeight);
+
+      // If we have an anchor user, try to scroll that card into view first
+      if (anchorUserId) {
+        const el = document.getElementById(anchorUserId);
+        if (el) {
+          el.scrollIntoView({ block: "center" });
+          hasRestoredScrollRef.current = true;
+          return;
+        }
+      }
+
+      // Wait until content is tall enough to reach savedY (allow small slack)
+      if (savedY !== null && maxScrollTop >= Math.max(0, savedY - 10)) {
+        const target = Math.min(savedY, maxScrollTop);
+        window.scrollTo(0, target);
+        hasRestoredScrollRef.current = true;
+        return;
+      }
+
+      if (Date.now() - start < maxWaitMs) {
+        requestAnimationFrame(tryRestore);
+      } else {
+        // Fallback: scroll to the bottom if we can't reach savedY in time
+        window.scrollTo(0, maxScrollTop);
+        hasRestoredScrollRef.current = true;
+      }
+    };
+
+    // Defer initial attempt slightly to outlast ContentWrapper's 500ms skeleton
+    const timeoutId = window.setTimeout(() => {
+      requestAnimationFrame(tryRestore);
+    }, 600);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  // Save scroll position on unmount and before page unload
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      try {
+        sessionStorage.setItem(SCROLL_STORAGE_KEY, String(window.scrollY));
+      } catch (e) {
+        // Ignore storage write errors
+      }
+    };
+
+    window.addEventListener("beforeunload", saveScrollPosition);
+    return () => {
+      window.removeEventListener("beforeunload", saveScrollPosition);
+      saveScrollPosition();
+    };
+  }, []);
+
   if (error) {
     return (
       <div className="text-center text-red-600">
@@ -859,14 +989,21 @@ const Users = () => {
                 ))}
               </div>
               <button
-                onClick={() =>
+                onClick={() => {
                   setFilters({
                     search: "",
                     roles: ["artist", "on-boarding"],
                     statuses: [],
                     interestInShow: [],
-                  })
-                }
+                  });
+                  try {
+                    sessionStorage.removeItem(SCROLL_STORAGE_KEY);
+                    sessionStorage.removeItem(ANCHOR_STORAGE_KEY);
+                  } catch (e) {
+                    // ignore storage errors
+                  }
+                  window.scrollTo({ top: 0 });
+                }}
                 className="text-sm text-gray-600 hover:text-gray-900 font-medium"
               >
                 Reset filters
@@ -885,6 +1022,7 @@ const Users = () => {
               return (
                 <div
                   key={user.id}
+                  id={user.id || undefined}
                   className="bg-white rounded-lg shadow p-6 flex flex-col items-center w-full max-w-md lg:max-w-lg cursor-pointer hover:shadow-lg transition-shadow relative"
                   onClick={() => handlePreviewUser(user)}
                 >
@@ -1596,6 +1734,20 @@ const Users = () => {
                               className="text-indigo-600 hover:text-indigo-900 hover:underline text-sm p-0 bg-transparent border-none cursor-pointer"
                               style={{ outline: "none" }}
                               onClick={() => {
+                                try {
+                                  sessionStorage.setItem(
+                                    SCROLL_STORAGE_KEY,
+                                    String(window.scrollY)
+                                  );
+                                  if (selectedUser.id) {
+                                    sessionStorage.setItem(
+                                      ANCHOR_STORAGE_KEY,
+                                      selectedUser.id
+                                    );
+                                  }
+                                } catch (e) {
+                                  // ignore storage errors
+                                }
                                 handleClosePreviewModal();
                                 navigate(`/users/${selectedUser.id}/artworks`);
                               }}

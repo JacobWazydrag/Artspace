@@ -183,10 +183,8 @@ const LazyArtworkCard = ({
 
         {/* Content */}
         <div className="p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            {artwork.title.length > 16
-              ? `${artwork.title.substring(0, 16)}...`
-              : artwork.title}
+          <h3 className="text-xl font-bold text-gray-900 mb-2 whitespace-normal md:truncate">
+            {artwork.title}
           </h3>
 
           <p
@@ -207,7 +205,9 @@ const LazyArtworkCard = ({
             {artwork.uom}
           </p>
 
-          {artwork.price && (
+          {artwork.price === 0 || artwork.price === "0" ? (
+            <p className="text-2xl font-bold text-gray-900">Not for sale</p>
+          ) : artwork.price ? (
             <p className="text-2xl font-bold text-gray-900">
               <NumericFormat
                 value={artwork.price}
@@ -219,7 +219,7 @@ const LazyArtworkCard = ({
                 displayType="text"
               />
             </p>
-          )}
+          ) : null}
         </div>
       </div>
     </motion.div>
@@ -355,11 +355,21 @@ const ImageGallery = ({
     return medium?.name || mediumId;
   };
 
+  // Prevent background scrolling while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col md:items-center md:justify-center p-4"
+      className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col md:items-center md:justify-center p-4 overflow-y-auto overscroll-y-contain"
       onClick={onClose}
     >
       <button
@@ -384,14 +394,16 @@ const ImageGallery = ({
         <>
           {/* Mobile: Description below image */}
           <div className="md:hidden bg-black bg-opacity-75 text-white p-4 mt-4 rounded-lg">
+            <h3 className="text-base font-semibold mb-2">{artwork.title}</h3>
             <p className="text-sm leading-relaxed opacity-90">
               {artwork.description}
             </p>
           </div>
 
           {/* Desktop: Description overlay */}
-          <div className="hidden md:block absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white p-6">
+          <div className="hidden md:block absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white p-6 max-h-[40vh] overflow-y-auto">
             <div className="max-w-4xl mx-auto">
+              <h3 className="text-base font-semibold mb-2">{artwork.title}</h3>
               <p className="text-sm leading-relaxed opacity-90">
                 {artwork.description}
               </p>

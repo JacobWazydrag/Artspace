@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../hooks/storeHook";
 import { fetchAllUsers, updateUser, User } from "../../features/usersSlice";
 import { fetchArtshows } from "../../features/artshowsSlice";
+import { sendMail } from "../../features/mailSlice";
+import { mergeEmailConfig } from "../../utils/emailConfig";
 
 const UserAccess = () => {
   const dispatch = useAppDispatch();
@@ -69,12 +71,49 @@ const UserAccess = () => {
 
   const handleSave = async () => {
     if (!selectedUser?.id) return;
+    const previousAccess = Array.isArray(selectedUser.showAccess)
+      ? (selectedUser.showAccess as string[])
+      : [];
+    const newlyGranted = selectedShowIds.filter(
+      (id) => !previousAccess.includes(id)
+    );
+
     await dispatch(
       updateUser({
         userId: selectedUser.id,
         userData: { showAccess: selectedShowIds },
       })
-    );
+    ).unwrap();
+
+    if (newlyGranted.length > 0) {
+      const grantedShowNames = newlyGranted
+        .map((id) => artshows.find((s) => s.id === id)?.name)
+        .filter(Boolean) as string[];
+
+      for (const showName of grantedShowNames) {
+        const mailData = mergeEmailConfig({
+          replyTo: "artspacechicago@gmail.com",
+          toUids: [selectedUser.id],
+          message: {
+            subject: `You've been added as a collaborator for ${showName}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; border-radius: 10px;">
+                <h2 style="color: #333; margin: 0 0 16px 0;">Access to Collaborate</h2>
+                <p style="color: #555; line-height: 1.6;">You've been added as a collaborator for <strong>${showName}</strong>.</p>
+                <p style="color: #555; line-height: 1.6;">You should now see a link in your sidebar to view the artists and their artworks for this show.</p>
+              </div>
+            `,
+          },
+        });
+        try {
+          await dispatch(sendMail(mailData)).unwrap();
+        } catch (e) {
+          // Do not block on email failure
+          // eslint-disable-next-line no-console
+          console.error("Failed to send collaborator email:", e);
+        }
+      }
+    }
     closeModal();
   };
 
@@ -189,13 +228,36 @@ const UserAccess = () => {
                               type="checkbox"
                               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                               checked={selectedShowIds.includes(show.id!)}
-                              onChange={() => toggleShowId(show.id!)}
+                              onChange={() => {
+                                toggleShowId(show.id!);
+                                setIsDropdownOpen(false);
+                              }}
                             />
                             <span className="ml-2">{show.name}</span>
                           </label>
                         </li>
                       ))}
                     </ul>
+                  </div>
+                </div>
+              )}
+              {selectedShowIds.length > 0 && (
+                <div className="mt-3">
+                  <div className="text-xs text-gray-500 mb-1">
+                    Selected shows
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedShowIds.map((id) => {
+                      const show = artshows.find((s) => s.id === id);
+                      return (
+                        <span
+                          key={id}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {show?.name || id}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               )}
