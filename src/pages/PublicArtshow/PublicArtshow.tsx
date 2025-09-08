@@ -362,13 +362,13 @@ const PublicArtshow = () => {
       <section className="bg-black">
         <div className="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12">
           {/* Mobile Image - only visible on mobile, full-bleed */}
-          <div className="block lg:hidden w-screen max-w-none relative left-1/2 right-1/2 -mx-[50vw] -mt-8 mb-8 h-[300px] overflow-hidden bg-gray-100">
+          <div className="block lg:hidden w-screen max-w-none relative left-1/2 right-1/2 -mx-[50vw] -mt-8 mb-8 h-[300px] overflow-hidden bg-black">
             {activeArtshow.photoUrl && (
               <img
                 src={activeArtshow.photoUrl}
                 alt={activeArtshow.name}
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ objectPosition: "center top" }}
+                className="absolute inset-0 w-full h-full object-contain"
+                style={{ objectPosition: "center center" }}
               />
             )}
           </div>

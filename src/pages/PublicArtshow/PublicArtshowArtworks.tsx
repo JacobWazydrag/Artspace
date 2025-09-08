@@ -597,86 +597,47 @@ const PublicArtshowArtworks = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <section className="bg-black">
-        <div className="container mx-auto px-4 md:px-8 lg:px-4 py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[60vh]">
-            {/* Image Section */}
-            <div className="hidden lg:block order-2 lg:order-1">
-              {activeArtshow.photoUrl ? (
-                <div className="relative w-full h-[450px] md:h-[550px] lg:h-[650px] rounded-2xl overflow-hidden shadow-2xl">
-                  <img
-                    src={activeArtshow.photoUrl}
-                    alt={activeArtshow.name}
-                    className="w-full h-full object-cover object-center"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
-                </div>
-              ) : (
-                <div className="w-full h-[400px] md:h-[500px] lg:h-[600px] bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 rounded-2xl shadow-2xl flex items-center justify-center">
-                  <div className="text-white text-center">
-                    <svg
-                      className="w-24 h-24 mx-auto mb-4 opacity-50"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <p className="text-lg opacity-75">Exhibition Image</p>
-                  </div>
-                </div>
-              )}
-            </div>
+        <div className="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12">
+          {/* Mobile Image - only visible on mobile, full-bleed */}
+          <div className="block lg:hidden w-screen max-w-none relative left-1/2 right-1/2 -mx-[50vw] -mt-8 mb-8 h-[300px] overflow-hidden bg-black">
+            {activeArtshow.photoUrl && (
+              <img
+                src={activeArtshow.photoUrl}
+                alt={activeArtshow.name}
+                className="absolute inset-0 w-full h-full object-contain"
+                style={{ objectPosition: "center center" }}
+              />
+            )}
+          </div>
 
-            {/* Content Section */}
-            <div className="order-1 lg:order-2 space-y-6">
-              <div>
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-4">
-                  {activeArtshow.name}
-                </h1>
-                <div className="w-24 h-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full mb-6"></div>
-              </div>
+          {/* Text content */}
+          <div className="mr-auto place-self-center lg:col-span-7">
+            <h1 className="max-w-2xl mb-4 text-4xl font-extrabold tracking-tight leading-none md:text-5xl xl:text-6xl text-white">
+              {activeArtshow.name}
+            </h1>
+            <p className="max-w-2xl mb-6 font-light text-gray-200 lg:mb-8 md:text-lg lg:text-xl">
+              {new Date(
+                activeArtshow.startDate + "T00:00:00"
+              ).toLocaleDateString()}{" "}
+              -{" "}
+              {new Date(
+                activeArtshow.endDate + "T00:00:00"
+              ).toLocaleDateString()}
+            </p>
+            <p className="max-w-2xl mb-6 font-light text-gray-200 lg:mb-8 md:text-lg lg:text-xl">
+              {activeArtshow.description}
+            </p>
+          </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
-                  <p className="text-xl md:text-2xl text-gray-200 font-medium">
-                    {new Date(
-                      activeArtshow.startDate + "T00:00:00"
-                    ).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                  <p className="text-xl md:text-2xl text-gray-200 font-medium">
-                    {new Date(
-                      activeArtshow.endDate + "T00:00:00"
-                    ).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-4">
-                <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
-                  {activeArtshow.description}
-                </p>
-              </div>
-            </div>
+          {/* Desktop Image - only visible on desktop */}
+          <div className="hidden lg:mt-0 lg:col-span-5 lg:flex lg:order-last mb-8 lg:mb-0">
+            {activeArtshow.photoUrl && (
+              <img
+                src={activeArtshow.photoUrl}
+                alt={activeArtshow.name}
+                className="w-full h-full object-cover rounded-lg"
+              />
+            )}
           </div>
         </div>
       </section>

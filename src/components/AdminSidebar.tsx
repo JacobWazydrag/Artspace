@@ -76,7 +76,7 @@ const Sidebar = () => {
                   </span>
                 </Link>
               </li> */}
-              <li>
+              {/* <li>
                 <Link
                   to="/locations"
                   className={`block px-4 py-2 rounded ${
@@ -88,7 +88,7 @@ const Sidebar = () => {
                     Locations
                   </span>
                 </Link>
-              </li>
+              </li> */}
               <li>
                 <Link
                   to="/artshows"

@@ -13,7 +13,7 @@ import { toast } from "react-hot-toast";
 import ContentWrapper from "../../components/ContentWrapper";
 import { Artwork } from "../../types/artwork";
 import { NumericFormat } from "react-number-format";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, runTransaction } from "firebase/firestore";
 import { db } from "../../firebase";
 
 interface ImageGalleryProps {
@@ -205,32 +205,35 @@ const UserArtworks = () => {
       // Update the artshow's artworkOrder array
       if (assignmentData.artshowId) {
         const artshowRef = doc(db, "artshows", assignmentData.artshowId);
-        const artshowDoc = await getDoc(artshowRef);
-        const artshowData = artshowDoc.data();
-        const currentArtworkOrder = artshowData?.artworkOrder || [];
+        // Deduplicate and update in a single transaction to avoid races
+        await runTransaction(db, async (tx) => {
+          const snap = await tx.get(artshowRef);
+          if (!snap.exists()) return;
+          const data = snap.data() as any;
+          const currentArtworkOrder: string[] = Array.isArray(
+            data?.artworkOrder
+          )
+            ? data.artworkOrder
+            : [];
 
-        if (showStatus === "accepted") {
-          // Only add artwork if it's not already in the array
-          if (!currentArtworkOrder.includes(selectedArtworkId)) {
-            const updatedArtworkOrder = [
-              ...currentArtworkOrder,
-              selectedArtworkId,
-            ];
-            await updateDoc(artshowRef, {
-              artworkOrder: updatedArtworkOrder,
-              updatedAt: new Date().toISOString(),
-            });
+          let updatedArtworkOrder: string[];
+          if (showStatus === "accepted") {
+            updatedArtworkOrder = currentArtworkOrder.includes(
+              selectedArtworkId
+            )
+              ? currentArtworkOrder
+              : [...currentArtworkOrder, selectedArtworkId];
+          } else {
+            updatedArtworkOrder = currentArtworkOrder.filter(
+              (id: string) => id !== selectedArtworkId
+            );
           }
-        } else {
-          // Remove artwork from the artworkOrder array
-          const updatedArtworkOrder = currentArtworkOrder.filter(
-            (id: string) => id !== selectedArtworkId
-          );
-          await updateDoc(artshowRef, {
+
+          tx.update(artshowRef, {
             artworkOrder: updatedArtworkOrder,
             updatedAt: new Date().toISOString(),
           });
-        }
+        });
       }
 
       // If we're removing from current show, also update that show's artworkOrder

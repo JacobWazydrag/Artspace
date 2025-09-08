@@ -25,6 +25,7 @@ import {
   where,
   getDocs,
   getDoc,
+  runTransaction,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { toast } from "react-hot-toast";
@@ -325,34 +326,56 @@ const Users = () => {
       });
 
       const artshowRef = doc(db, "artshows", acceptShowData.artshowId);
-      const artshowDoc = await getDoc(artshowRef);
-      const artshowData = artshowDoc.data();
-      const currentArtistIds = artshowData?.artistIds || [];
-      const currentArtworkIds = artshowData?.artworkIds || [];
-      const currentArtworkOrder = artshowData?.artworkOrder || [];
 
-      // Add selected artwork IDs to the bottom of the artworkOrder array, avoiding duplicates
-      const newArtworkIds = selectedArtworkIds.filter(
-        (id: string) => !currentArtworkOrder.includes(id)
-      );
-      const updatedArtworkOrder = [...currentArtworkOrder, ...newArtworkIds];
+      // Use a transaction to atomically deduplicate and update
+      await runTransaction(db, async (tx) => {
+        const artshowSnap = await tx.get(artshowRef);
+        if (!artshowSnap.exists()) throw new Error("Artshow not found");
+        const artshowData = artshowSnap.data() as any;
 
-      // Also avoid duplicates in artworkIds
-      const newArtworkIdsForShow = selectedArtworkIds.filter(
-        (id: string) => !currentArtworkIds.includes(id)
-      );
-      const updatedArtworkIds = [...currentArtworkIds, ...newArtworkIdsForShow];
+        const currentArtistIds: string[] = Array.isArray(artshowData?.artistIds)
+          ? artshowData.artistIds
+          : [];
+        const currentArtworkIds: string[] = Array.isArray(
+          artshowData?.artworkIds
+        )
+          ? artshowData.artworkIds
+          : [];
+        const currentArtworkOrder: string[] = Array.isArray(
+          artshowData?.artworkOrder
+        )
+          ? artshowData.artworkOrder
+          : [];
 
-      // Check if artist is already in the show to avoid duplicates
-      const updatedArtistIds = currentArtistIds.includes(selectedUser.id)
-        ? currentArtistIds
-        : [...currentArtistIds, selectedUser.id];
+        // Build sets to prevent duplicates
+        const artworkIdsSet = new Set(currentArtworkIds);
+        // Deduplicate existing artworkOrder while preserving order
+        const seen = new Set<string>();
+        const artworkOrderList: string[] = [];
+        for (const id of currentArtworkOrder) {
+          if (!seen.has(id)) {
+            seen.add(id);
+            artworkOrderList.push(id);
+          }
+        }
 
-      await updateDoc(artshowRef, {
-        artworkIds: updatedArtworkIds,
-        artistIds: updatedArtistIds,
-        artworkOrder: updatedArtworkOrder,
-        updatedAt: new Date().toISOString(),
+        // Add in selected artworks; preserve order append behavior
+        for (const id of selectedArtworkIds) {
+          if (!artworkIdsSet.has(id)) artworkIdsSet.add(id);
+          if (!artworkOrderList.includes(id)) artworkOrderList.push(id);
+        }
+
+        // Ensure artist added once
+        const updatedArtistIds = currentArtistIds.includes(selectedUser.id!)
+          ? currentArtistIds
+          : [...currentArtistIds, selectedUser.id!];
+
+        tx.update(artshowRef, {
+          artworkIds: Array.from(artworkIdsSet),
+          artistIds: updatedArtistIds,
+          artworkOrder: artworkOrderList,
+          updatedAt: new Date().toISOString(),
+        });
       });
 
       await Promise.all(updatePromises);
