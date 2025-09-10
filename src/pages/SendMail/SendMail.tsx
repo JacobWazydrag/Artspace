@@ -106,18 +106,32 @@ const SendMail = () => {
     return map;
   }, [users]);
 
-  // Artshow date windows for quick lookup
-  const artshowWindows = useMemo(() => {
-    return artshows
-      .map((s) => {
-        if (!s.startDate || !s.endDate) return null;
-        const start = new Date(`${s.startDate}T00:00:00`);
-        const end = new Date(`${s.endDate}T23:59:59.999`);
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
-        return { name: s.name, start, end } as { name: string; start: Date; end: Date };
-      })
-      .filter(Boolean) as { name: string; start: Date; end: Date }[];
+  // Map of email (lowercased) -> userId for reverse lookup
+  const emailToUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    users.forEach((u) => {
+      if (u.id && u.email) map.set(u.email.toLowerCase(), u.id);
+    });
+    return map;
+  }, [users]);
+
+  // Map of userId -> artshow names where user is an artist
+  const userIdToArtshows = useMemo(() => {
+    const map = new Map<string, string[]>();
+    artshows.forEach((show: any) => {
+      const ids = show?.artistIds || [];
+      if (Array.isArray(ids)) {
+        ids.forEach((uid: string) => {
+          if (!uid) return;
+          if (!map.has(uid)) map.set(uid, []);
+          if (show?.name) map.get(uid)!.push(show.name);
+        });
+      }
+    });
+    return map;
   }, [artshows]);
+
+  // (No artshowId fallback; association is based on actual artistIds membership)
 
   // Users for dropdown (sorted by name then email)
   const usersForDropdown = useMemo(() => {
@@ -207,15 +221,67 @@ const SendMail = () => {
 
       // Unique recipients
       let recipients = Array.from(new Set(collectedRecipients));
-      const recipientUids = Array.from(new Set(collectedRecipientUids));
+      let recipientUids = Array.from(new Set(collectedRecipientUids));
+
+      // Subject can be on message.subject or subject
+      const subjectText = doc.message?.subject || doc.subject || "(no subject)";
+
+      // Special-case: New Artist notification -> display registrant email from message HTML
+      if (
+        typeof subjectText === "string" &&
+        subjectText.toLowerCase().includes("new artist joins artspace chicago") &&
+        typeof doc.message?.html === "string"
+      ) {
+        const html: string = doc.message.html;
+        const emailsFromHtml = new Set<string>();
+        const patterns = [
+          /<strong>\s*Email:\s*<\/strong>\s*([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi,
+          /Email:\s*([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi,
+        ];
+        patterns.forEach((re) => {
+          let match: RegExpExecArray | null;
+          while ((match = re.exec(html)) !== null) {
+            if (match[1]) emailsFromHtml.add(match[1]);
+          }
+        });
+        if (emailsFromHtml.size > 0) {
+          recipients = Array.from(emailsFromHtml);
+          const mappedUids = recipients
+            .map((e) => emailToUserId.get(e.toLowerCase()))
+            .filter((v): v is string => typeof v === "string");
+          recipientUids = Array.from(new Set(mappedUids));
+        }
+      }
 
       // Fallback: if no email recipients were resolved but we have UIDs, show display names
       if (recipients.length === 0 && recipientUids.length > 0) {
         recipients = recipientUids.map((uid) => userIdToDisplay.get(uid) || uid);
       }
 
-      // Subject can be on message.subject or subject
-      const subjectText = doc.message?.subject || doc.subject || "(no subject)";
+      // Derive userIds from final recipients (emails) to ensure association uses displayed recipients
+      const derivedUidSet = new Set<string>();
+      const emailRegex = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+      recipients.forEach((r) => {
+        const emails = (r.match(emailRegex) || []).map((e) => e.toLowerCase());
+        emails.forEach((e) => {
+          const uid = emailToUserId.get(e);
+          if (uid) derivedUidSet.add(uid);
+        });
+      });
+
+      const allRecipientUids = new Set<string>();
+      recipientUids.forEach((uid) => allRecipientUids.add(uid));
+      derivedUidSet.forEach((uid) => allRecipientUids.add(uid));
+
+      // Associated artshows strictly from artistIds membership
+      const associatedSet = new Set<string>();
+      allRecipientUids.forEach((uid) => {
+        const shows = userIdToArtshows.get(uid);
+        if (Array.isArray(shows)) {
+          shows.forEach((name) => associatedSet.add(name));
+        }
+      });
+      const associatedArtshows = Array.from(associatedSet);
 
       // createdAt may be a Firestore Timestamp or ISO string
       let created: Date | null = null;
@@ -230,34 +296,25 @@ const SendMail = () => {
       // Optional state/status
       const status: string | undefined = doc.state || doc.status;
 
-      // Determine artshow name if createdAt is within any show's window
-      let showName: string | undefined = undefined;
-      if (created) {
-        const match = artshowWindows.find(
-          (w) => created && created >= w.start && created <= w.end
-        );
-        if (match) showName = match.name;
-      }
-
       return {
         id: doc.id as string,
         subject: subjectText as string,
         recipients,
-        recipientUids,
+        recipientUids: Array.from(allRecipientUids),
+        associatedArtshows,
         createdAt: created,
         status,
-        showName,
       } as {
         id: string;
         subject: string;
         recipients: string[];
         recipientUids: string[];
+        associatedArtshows: string[];
         createdAt: Date | null;
         status?: string;
-        showName?: string;
       };
     });
-  }, [mailDocs, userIdToEmail, userIdToDisplay, artshowWindows]);
+  }, [mailDocs, userIdToEmail, userIdToDisplay, userIdToArtshows, emailToUserId]);
 
   // Apply filters: text + date range
   const filteredMailItems = useMemo(() => {
@@ -617,7 +674,7 @@ const SendMail = () => {
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">During Artshow</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Associated Artshow</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -693,10 +750,14 @@ const SendMail = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
-                          {item.showName ? (
-                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
-                              {item.showName}
-                            </span>
+                          {item.associatedArtshows.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {item.associatedArtshows.map((name) => (
+                                <span key={name} className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                                  {name}
+                                </span>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
