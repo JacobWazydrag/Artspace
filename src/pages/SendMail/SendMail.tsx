@@ -31,6 +31,8 @@ const SendMail = () => {
   const [endDateStr, setEndDateStr] = useState<string>("");
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [selectedMailUserId, setSelectedMailUserId] = useState<string>("");
+  const [selectedArtshowFilter, setSelectedArtshowFilter] = useState<string>("");
+  const [activeTooltipKey, setActiveTooltipKey] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(fetchAllUsers());
@@ -135,7 +137,9 @@ const SendMail = () => {
 
   // Users for dropdown (sorted by name then email)
   const usersForDropdown = useMemo(() => {
-    const copy = [...users];
+    const copy = users.filter(
+      (u) => typeof u.email === "string" && u.email.trim().length > 0
+    );
     copy.sort((a, b) => {
       const aName = (a.name || "").toLowerCase();
       const bName = (b.name || "").toLowerCase();
@@ -150,6 +154,32 @@ const SendMail = () => {
     const u = users.find((x) => x.id === selectedMailUserId);
     return u?.email || "";
   }, [users, selectedMailUserId]);
+
+  // Artshow names for filter dropdown
+  const artshowNamesForFilter = useMemo(() => {
+    const set = new Set<string>();
+    artshows.forEach((s: any) => {
+      if (s?.name) set.add(s.name);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [artshows]);
+
+  // Resolve a recipient's display name by email if available
+  const getRecipientName = (recipient: string): string | null => {
+    const emailMatch = recipient
+      .match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]
+      ?.toLowerCase();
+    if (emailMatch) {
+      const u = users.find((x) => x.email?.toLowerCase() === emailMatch);
+      return u?.name || null;
+    }
+    // If format is "Name - email" return name before dash
+    const dashIndex = recipient.indexOf(" - ");
+    if (dashIndex > 0) {
+      return recipient.substring(0, dashIndex);
+    }
+    return null;
+  };
 
   // Transform raw mail docs into display items
   const mailItems = useMemo(() => {
@@ -340,6 +370,11 @@ const SendMail = () => {
             : false)
         : true;
 
+      // Artshow filter by associated artshow name
+      const matchesArtshow = selectedArtshowFilter
+        ? item.associatedArtshows.includes(selectedArtshowFilter)
+        : true;
+
       // Date filter
       const withinDate = (() => {
         if (!item.createdAt) return false;
@@ -348,9 +383,9 @@ const SendMail = () => {
         return true;
       })();
 
-      return matchesText && matchesUser && withinDate;
+      return matchesText && matchesUser && matchesArtshow && withinDate;
     });
-  }, [mailItems, mailSearch, startDateStr, endDateStr, selectedMailUserId, selectedMailUserEmail]);
+  }, [mailItems, mailSearch, startDateStr, endDateStr, selectedMailUserId, selectedMailUserEmail, selectedArtshowFilter]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -619,7 +654,7 @@ const SendMail = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
             <select
               value={selectedMailUserId}
               onChange={(e) => setSelectedMailUserId(e.target.value)}
@@ -629,6 +664,18 @@ const SendMail = () => {
               {usersForDropdown.map((u) => (
                 <option key={u.id} value={u.id}>
                   {(u.name ? u.name + " - " : "") + u.email}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedArtshowFilter}
+              onChange={(e) => setSelectedArtshowFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            >
+              <option value="">All artshows</option>
+              {artshowNamesForFilter.map((name) => (
+                <option key={name} value={name}>
+                  {name}
                 </option>
               ))}
             </select>
@@ -659,6 +706,7 @@ const SendMail = () => {
                   setStartDateStr("");
                   setEndDateStr("");
                   setSelectedMailUserId("");
+                  setSelectedArtshowFilter("");
                 }}
                 className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
               >
@@ -711,14 +759,29 @@ const SendMail = () => {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700" title={recipientsText}>
                           <div className="flex flex-wrap gap-1">
-                            {visibleRecipients.map((r) => (
-                              <span
-                                key={r}
-                                className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
-                              >
-                                {r}
-                              </span>
-                            ))}
+                            {visibleRecipients.map((r) => {
+                              const recipientName = getRecipientName(r);
+                              const key = `${item.id}|${r}`;
+                              const isActive = activeTooltipKey === key;
+                              return (
+                                <span key={key} className="relative">
+                                  <button
+                                    type="button"
+                                    onMouseEnter={() => setActiveTooltipKey(key)}
+                                    onMouseLeave={() => setActiveTooltipKey(null)}
+                                    className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
+                                    title={recipientName || undefined}
+                                  >
+                                    {r}
+                                  </button>
+                                  {recipientName && isActive && (
+                                    <div className="absolute z-20 -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black text-white text-xs px-2 py-1 rounded shadow">
+                                      {recipientName}
+                                    </div>
+                                  )}
+                                </span>
+                              );
+                            })}
                             {!isExpanded && remaining > 0 && (
                               <button
                                 type="button"
