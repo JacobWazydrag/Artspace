@@ -106,6 +106,19 @@ const SendMail = () => {
     return map;
   }, [users]);
 
+  // Artshow date windows for quick lookup
+  const artshowWindows = useMemo(() => {
+    return artshows
+      .map((s) => {
+        if (!s.startDate || !s.endDate) return null;
+        const start = new Date(`${s.startDate}T00:00:00`);
+        const end = new Date(`${s.endDate}T23:59:59.999`);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+        return { name: s.name, start, end } as { name: string; start: Date; end: Date };
+      })
+      .filter(Boolean) as { name: string; start: Date; end: Date }[];
+  }, [artshows]);
+
   // Users for dropdown (sorted by name then email)
   const usersForDropdown = useMemo(() => {
     const copy = [...users];
@@ -217,6 +230,15 @@ const SendMail = () => {
       // Optional state/status
       const status: string | undefined = doc.state || doc.status;
 
+      // Determine artshow name if createdAt is within any show's window
+      let showName: string | undefined = undefined;
+      if (created) {
+        const match = artshowWindows.find(
+          (w) => created && created >= w.start && created <= w.end
+        );
+        if (match) showName = match.name;
+      }
+
       return {
         id: doc.id as string,
         subject: subjectText as string,
@@ -224,6 +246,7 @@ const SendMail = () => {
         recipientUids,
         createdAt: created,
         status,
+        showName,
       } as {
         id: string;
         subject: string;
@@ -231,9 +254,10 @@ const SendMail = () => {
         recipientUids: string[];
         createdAt: Date | null;
         status?: string;
+        showName?: string;
       };
     });
-  }, [mailDocs, userIdToEmail, userIdToDisplay]);
+  }, [mailDocs, userIdToEmail, userIdToDisplay, artshowWindows]);
 
   // Apply filters: text + date range
   const filteredMailItems = useMemo(() => {
@@ -593,19 +617,20 @@ const SendMail = () => {
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">During Artshow</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {isMailLoading && (
                   <tr>
-                    <td className="px-4 py-3 text-sm text-gray-500" colSpan={3}>
+                    <td className="px-4 py-3 text-sm text-gray-500" colSpan={4}>
                       Loading...
                     </td>
                   </tr>
                 )}
                 {!isMailLoading && filteredMailItems.length === 0 && (
                   <tr>
-                    <td className="px-4 py-3 text-sm text-gray-500" colSpan={3}>
+                    <td className="px-4 py-3 text-sm text-gray-500" colSpan={4}>
                       No mail found
                     </td>
                   </tr>
@@ -666,6 +691,15 @@ const SendMail = () => {
                               </button>
                             )}
                           </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                          {item.showName ? (
+                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                              {item.showName}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </td>
                       </tr>
                     );
