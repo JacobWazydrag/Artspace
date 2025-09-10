@@ -61,7 +61,9 @@ const Users = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAcceptShowModalOpen, setIsAcceptShowModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [ratingTargetUser, setRatingTargetUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<Partial<User>>({
     role: "on-boarding",
     status: "accepted",
@@ -552,6 +554,109 @@ const Users = () => {
   const handlePreviewUser = (user: User) => {
     setSelectedUser(user);
     setIsPreviewModalOpen(true);
+  };
+
+  // Rating rubric form state
+  const [ratingForm, setRatingForm] = useState({
+    submittedOnTime: 3,
+    easeToWorkWith: 3,
+    attendedOpening: 3,
+    attendedClosing: 3,
+    pickedUpOnTime: 3,
+    selfPromoted: 3,
+  });
+
+  const openRateModal = (user: User) => {
+    setRatingTargetUser(user);
+    setRatingForm({
+      submittedOnTime: 3,
+      easeToWorkWith: 3,
+      attendedOpening: 3,
+      attendedClosing: 3,
+      pickedUpOnTime: 3,
+      selfPromoted: 3,
+    });
+    setIsRateModalOpen(true);
+  };
+
+  const computeWeightedScore = (form: typeof ratingForm) => {
+    const weights = {
+      submittedOnTime: 15,
+      easeToWorkWith: 30,
+      attendedOpening: 10,
+      attendedClosing: 10,
+      pickedUpOnTime: 10,
+      selfPromoted: 25,
+    };
+    const score =
+      (form.submittedOnTime / 4) * weights.submittedOnTime +
+      (form.easeToWorkWith / 4) * weights.easeToWorkWith +
+      (form.attendedOpening / 4) * weights.attendedOpening +
+      (form.attendedClosing / 4) * weights.attendedClosing +
+      (form.pickedUpOnTime / 4) * weights.pickedUpOnTime +
+      (form.selfPromoted / 4) * weights.selfPromoted;
+    return Math.round(score * 10) / 10; // one decimal
+  };
+
+  const decisionFromScore = (score: number) => {
+    if (score >= 85) return "Invite back";
+    if (score >= 70) return "Likely invite";
+    if (score >= 55) return "Conditional (coach first)";
+    return "Do not re-invite (for now)";
+  };
+
+  const computeTriggers = (form: typeof ratingForm) => {
+    const triggers: string[] = [];
+    if (form.pickedUpOnTime <= 1) triggers.push("Require deposit next time");
+    if (form.submittedOnTime <= 1)
+      triggers.push("Earlier deadline/stricter comms");
+    if (form.selfPromoted <= 1)
+      triggers.push("Share promo kit/expectations");
+    return triggers;
+  };
+
+  const decisionBadgeClasses = (decision: string) => {
+    if (decision === "Invite back") return "bg-green-100 text-green-800";
+    if (decision === "Likely invite") return "bg-blue-100 text-blue-800";
+    if (decision === "Conditional (coach first)")
+      return "bg-yellow-100 text-yellow-800";
+    return "bg-red-100 text-red-800"; // Do not re-invite (for now)
+  };
+
+  const handleSubmitRating = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ratingTargetUser?.id || !currentUser?.id) return;
+    const weightedScore = computeWeightedScore(ratingForm);
+    const decision = decisionFromScore(weightedScore);
+    const triggers = computeTriggers(ratingForm);
+    try {
+      await dispatch(
+        updateUser({
+          userId: ratingTargetUser.id,
+          userData: {
+            rating: {
+              submittedOnTime: ratingForm.submittedOnTime,
+              easeToWorkWith: ratingForm.easeToWorkWith,
+              attendedOpening: ratingForm.attendedOpening,
+              attendedClosing: ratingForm.attendedClosing,
+              pickedUpOnTime: ratingForm.pickedUpOnTime,
+              selfPromoted: ratingForm.selfPromoted,
+              weightedScore,
+              decision,
+              triggers,
+              createdAt: new Date().toISOString(),
+              createdBy: currentUser.id,
+            },
+          },
+        })
+      ).unwrap();
+      toast.success("Rating saved");
+      setIsRateModalOpen(false);
+      setRatingTargetUser(null);
+    } catch (err) {
+      console.error("Failed to save rating", err);
+      toast.error("Failed to save rating");
+    }
   };
 
   const handleClosePreviewModal = () => {
@@ -1114,7 +1219,34 @@ const Users = () => {
                   <div className="text-xs text-gray-500 text-center mb-4">
                     {user.email}
                   </div>
+                  {user.rating && (
+                    <div className="text-center mb-4">
+                      <div className="text-sm text-gray-900">
+                        <span className="font-semibold">
+                          {user.rating.weightedScore}
+                        </span>
+                      </div>
+                      <span
+                        className={`inline-flex mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${decisionBadgeClasses(
+                          user.rating.decision
+                        )}`}
+                      >
+                        {user.rating.decision}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex flex-col items-center space-y-2 w-full">
+                    {currentUser?.role === "admin" && !user.rating && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openRateModal(user);
+                        }}
+                        className="text-purple-600 hover:text-purple-900 w-full"
+                      >
+                        Rate
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1916,6 +2048,185 @@ const Users = () => {
                     Close
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isRateModalOpen && ratingTargetUser && (
+          <div
+            className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start md:pl-64 justify-center"
+            onClick={() => setIsRateModalOpen(false)}
+          >
+            <div
+              className="relative top-10 mx-auto p-5 border w-[600px] max-w-full max-h-[90vh] shadow-lg rounded-md bg-white overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mt-3">
+                <h3 className={h4}>Rate {ratingTargetUser.name}</h3>
+                <form onSubmit={handleSubmitRating} className="space-y-4">
+                  <div>
+                    <label className={label}>Submitted on time (15%)</label>
+                    <select
+                      className={select}
+                      value={ratingForm.submittedOnTime}
+                      onChange={(e) =>
+                        setRatingForm((prev) => ({
+                          ...prev,
+                          submittedOnTime: Number(e.target.value),
+                        }))
+                      }
+                    >
+                      {[4, 3, 2, 1, 0].map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={label}>
+                      Ease to work with (30%)
+                    </label>
+                    <select
+                      className={select}
+                      value={ratingForm.easeToWorkWith}
+                      onChange={(e) =>
+                        setRatingForm((prev) => ({
+                          ...prev,
+                          easeToWorkWith: Number(e.target.value),
+                        }))
+                      }
+                    >
+                      {[4, 3, 2, 1, 0].map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={label}>Attended opening (10%)</label>
+                    <select
+                      className={select}
+                      value={ratingForm.attendedOpening}
+                      onChange={(e) =>
+                        setRatingForm((prev) => ({
+                          ...prev,
+                          attendedOpening: Number(e.target.value),
+                        }))
+                      }
+                    >
+                      {[4, 3, 2, 1, 0].map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={label}>Attended closing (10%)</label>
+                    <select
+                      className={select}
+                      value={ratingForm.attendedClosing}
+                      onChange={(e) =>
+                        setRatingForm((prev) => ({
+                          ...prev,
+                          attendedClosing: Number(e.target.value),
+                        }))
+                      }
+                    >
+                      {[4, 3, 2, 1, 0].map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={label}>Picked up on time (10%)</label>
+                    <select
+                      className={select}
+                      value={ratingForm.pickedUpOnTime}
+                      onChange={(e) =>
+                        setRatingForm((prev) => ({
+                          ...prev,
+                          pickedUpOnTime: Number(e.target.value),
+                        }))
+                      }
+                    >
+                      {[4, 3, 2, 1, 0].map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={label}>
+                      Self-promoted & brought support network (25%)
+                    </label>
+                    <select
+                      className={select}
+                      value={ratingForm.selfPromoted}
+                      onChange={(e) =>
+                        setRatingForm((prev) => ({
+                          ...prev,
+                          selfPromoted: Number(e.target.value),
+                        }))
+                      }
+                    >
+                      {[4, 3, 2, 1, 0].map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-gray-50 rounded border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Weighted score</span>
+                      <span className="text-lg font-semibold text-gray-900">
+                        {computeWeightedScore(ratingForm)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-sm text-gray-600">Decision</span>
+                      <span className="text-sm font-medium text-gray-800">
+                        {decisionFromScore(computeWeightedScore(ratingForm))}
+                      </span>
+                    </div>
+                    {computeTriggers(ratingForm).length > 0 && (
+                      <div className="mt-2">
+                        <span className="text-sm text-gray-600">Notes</span>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {computeTriggers(ratingForm).map((t) => (
+                            <span
+                              key={t}
+                              className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsRateModalOpen(false)}
+                      className={cancelButton}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className={button}>
+                      Save rating
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
