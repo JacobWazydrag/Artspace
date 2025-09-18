@@ -22,6 +22,7 @@ const Settings = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [bio, setBio] = useState<string>("");
   const storage = getStorage();
 
   useEffect(() => {
@@ -31,6 +32,10 @@ const Settings = () => {
     // Set initial preview URL from profile
     if (profile?.photoUrl) {
       setPreviewUrl(profile.photoUrl);
+    }
+    // Initialize bio draft from profile
+    if (profile?.bio !== undefined) {
+      setBio(profile.bio || "");
     }
   }, [profile]);
 
@@ -143,6 +148,43 @@ const Settings = () => {
     } catch (error) {
       console.error("Error updating photo:", error);
       toast.error("Failed to update profile photo");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveBio = async () => {
+    if (!profile?.id) return;
+
+    const trimmedBio = (bio || "").trim();
+    if ((profile.bio || "").trim() === trimmedBio) {
+      toast("No changes to save");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const userRef = doc(db, "users", profile.id);
+      await updateDoc(userRef, {
+        bio: trimmedBio,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Update profile state locally
+      dispatch(
+        setProfileData({
+          ...profile,
+          bio: trimmedBio,
+        })
+      );
+
+      // Refresh from server
+      await dispatch(fetchUserProfile(profile.id)).unwrap();
+
+      toast.success("Bio updated successfully");
+    } catch (error) {
+      console.error("Error updating bio:", error);
+      toast.error("Failed to update bio");
     } finally {
       setIsSubmitting(false);
     }
@@ -269,6 +311,49 @@ const Settings = () => {
                       {isSubmitting ? "Saving..." : "Save Photo"}
                     </button>
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bio Section */}
+          <div className="bg-white rounded-lg shadow-md mb-8">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Bio</h2>
+              <p className="text-gray-600 mt-1">
+                Tell visitors a bit about yourself. This may appear on your
+                public profile and show pages.
+              </p>
+            </div>
+            <div className="p-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Your Bio
+                </label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 p-3 text-gray-900"
+                  placeholder="Write a short bio..."
+                  rows={5}
+                  disabled={isSubmitting}
+                  maxLength={1000}
+                />
+                <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span>{bio.trim().length}/1000</span>
+                  <div className="space-x-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveBio}
+                      disabled={
+                        isSubmitting ||
+                        (profile?.bio || "").trim() === (bio || "").trim()
+                      }
+                      className="px-4 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      {isSubmitting ? "Saving..." : "Save Bio"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
