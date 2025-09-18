@@ -12,6 +12,9 @@ import {
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   UsersIcon,
+  ArrowsRightLeftIcon,
+  ArrowRightEndOnRectangleIcon,
+  UserIcon,
 } from "@heroicons/react/24/outline";
 import { selectHasUnreadMessages } from "../features/chatSlice";
 import { useMemo } from "react";
@@ -144,8 +147,8 @@ const ArtistSidebar = () => {
               }`}
             >
               <span className="flex items-center gap-3">
-                <Cog6ToothIcon className="w-5 h-5" />
-                Settings
+                <UserIcon className="w-5 h-5" />
+                Profile
               </span>
             </Link>
           </li>
@@ -156,7 +159,7 @@ const ArtistSidebar = () => {
               type="button"
             >
               <span className="flex items-center gap-3">
-                <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                <ArrowRightEndOnRectangleIcon className="w-5 h-5" />
                 Logout
               </span>
             </button>
