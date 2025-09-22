@@ -109,6 +109,7 @@ const Users = () => {
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const artShowDropdownRef = useRef<HTMLDivElement>(null);
   const hasRestoredScrollRef = useRef(false);
+  const [isSavingInterest, setIsSavingInterest] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -610,8 +611,7 @@ const Users = () => {
     if (form.pickedUpOnTime <= 1) triggers.push("Require deposit next time");
     if (form.submittedOnTime <= 1)
       triggers.push("Earlier deadline/stricter comms");
-    if (form.selfPromoted <= 1)
-      triggers.push("Share promo kit/expectations");
+    if (form.selfPromoted <= 1) triggers.push("Share promo kit/expectations");
     return triggers;
   };
 
@@ -662,6 +662,31 @@ const Users = () => {
   const handleClosePreviewModal = () => {
     setIsPreviewModalOpen(false);
     setSelectedUser(null);
+  };
+
+  const handleChangeInterestInShow = async (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    if (!selectedUser?.id) return;
+    const newValue = e.target.value;
+    setIsSavingInterest(true);
+    try {
+      await dispatch(
+        updateUser({
+          userId: selectedUser.id,
+          userData: { interestInShow: newValue },
+        })
+      ).unwrap();
+      setSelectedUser((prev) =>
+        prev ? { ...prev, interestInShow: newValue } : prev
+      );
+      toast.success("Interest updated");
+    } catch (err) {
+      console.error("Failed to update interestInShow", err);
+      toast.error("Failed to update");
+    } finally {
+      setIsSavingInterest(false);
+    }
   };
 
   const getMediumName = (mediumId: string) => {
@@ -1858,16 +1883,30 @@ const Users = () => {
                       Art Show Information
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {selectedUser.interestInShow && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Interest in Show
-                          </label>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Interest in Show
+                        </label>
+                        {currentUser?.role === "admin" ? (
+                          <select
+                            className={select}
+                            value={selectedUser.interestInShow || ""}
+                            onChange={handleChangeInterestInShow}
+                            disabled={isSavingInterest}
+                          >
+                            <option value="">No preference</option>
+                            {artshows.map((show) => (
+                              <option key={show.id} value={show.name}>
+                                {show.name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
                           <p className="text-gray-600">
-                            {selectedUser.interestInShow}
+                            {selectedUser.interestInShow || "None"}
                           </p>
-                        </div>
-                      )}
+                        )}
+                      </div>
                       {selectedUser.artshowId && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1886,11 +1925,12 @@ const Users = () => {
                           {selectedUser.shownAtArtspace ? "Yes" : "No"}
                         </p>
                       </div>
+
                       {selectedUser.artworks && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <h4 className="text-lg font-medium text-gray-900 mb-3">
                             Artworks
-                          </label>
+                          </h4>
                           <div className="flex items-center gap-3">
                             <button
                               className="text-indigo-600 hover:text-indigo-900 hover:underline text-sm p-0 bg-transparent border-none cursor-pointer"
@@ -2085,9 +2125,7 @@ const Users = () => {
                     </select>
                   </div>
                   <div>
-                    <label className={label}>
-                      Ease to work with (30%)
-                    </label>
+                    <label className={label}>Ease to work with (30%)</label>
                     <select
                       className={select}
                       value={ratingForm.easeToWorkWith}
@@ -2186,7 +2224,9 @@ const Users = () => {
 
                   <div className="mt-4 p-3 bg-gray-50 rounded border">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Weighted score</span>
+                      <span className="text-sm text-gray-600">
+                        Weighted score
+                      </span>
                       <span className="text-lg font-semibold text-gray-900">
                         {computeWeightedScore(ratingForm)}
                       </span>

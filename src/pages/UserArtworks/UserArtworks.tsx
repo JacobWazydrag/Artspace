@@ -347,6 +347,13 @@ const UserArtworks = () => {
     return show?.name || "Unknown Show";
   };
 
+  const getLastShownShowName = (artwork: Artwork) => {
+    const history = artwork.beenInShows || [];
+    if (history.length === 0) return null;
+    const lastShowId = history[history.length - 1];
+    return getShowName(lastShowId);
+  };
+
   const getMediumName = (mediumId: string) => {
     const medium = mediums?.find((m) => m.id === mediumId);
     return medium?.name || mediumId;
@@ -428,6 +435,12 @@ const UserArtworks = () => {
                   <h3 className="text-lg font-semibold">{artwork.title}</h3>
                   <div className="flex flex-col gap-1">
                     {getStatusBadge(artwork)}
+                    {artwork.showStatus === "shown" &&
+                      getLastShownShowName(artwork) && (
+                        <span className="text-[11px] text-gray-500">
+                          Shown at: {getLastShownShowName(artwork)}
+                        </span>
+                      )}
                     {getSaleBadge(artwork)}
                   </div>
                 </div>
